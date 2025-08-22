@@ -74,48 +74,117 @@
       }
       .modal input::placeholder, .modal textarea::placeholder{ color:var(--text-muted); }
       .modal-actions{ display:flex; gap:12px; justify-content:flex-end; margin-top:20px; }
+
+      .tab-bar{
+        position:fixed; bottom:0; left:0; right:0;
+        padding:max(8px, env(safe-area-inset-bottom) + 8px) 16px 8px;
+        background:linear-gradient(160deg,rgba(255,255,255,.12),rgba(255,255,255,.08));
+        backdrop-filter:saturate(140%) blur(8px);
+        border-top:1px solid var(--border-light);
+        display:flex; gap:4px; justify-content:center;
+        z-index:9998;
+      }
+      .tab-btn{
+        flex:1; max-width:120px; height:48px; padding:8px;
+        border:none; background:transparent; color:var(--text-muted);
+        border-radius:var(--radius-sm); font-size:12px; font-weight:500;
+        display:flex; flex-direction:column; align-items:center; justify-content:center;
+        cursor:pointer; transition:all .2s ease;
+      }
+      .tab-btn[aria-selected="true"]{
+        color:var(--text-primary);
+        background:rgba(255,255,255,.1);
+      }
+      .tab-btn:active{ transform:scale(.95); }
+
+      .day-grid{
+        display:grid; grid-template-columns:repeat(7,1fr); gap:8px; margin-top:12px;
+      }
+      .day-box{
+        aspect-ratio:1; background:rgba(255,255,255,.06);
+        border:1px solid var(--border-light); border-radius:8px;
+        display:flex; align-items:center; justify-content:center;
+        font-size:12px; font-weight:600;
+      }
+      .settings-row{
+        display:flex; justify-content:space-between; align-items:center;
+        padding:12px 0; border-bottom:1px solid rgba(255,255,255,.08);
+      }
+      .settings-row:last-child{ border-bottom:none; }
     </style>
   </head>
   <body>
     <header><div class="bar"><div class="title">Planner App</div></div></header>
 
     <main>
-      <div class="card">
-        <h2 style="margin:0 0 10px 0">Today — step 0.3</h2>
-        <div class="muted" style="margin-bottom:14px">Static preview of tasks.</div>
+      <section id="tab-today">
+        <div class="card">
+          <h2 style="margin:0 0 10px 0">Today — step 0.5b</h2>
+          <div class="muted" style="margin-bottom:14px">Static preview of tasks.</div>
 
-        <ul style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
-          <li style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)">
-            <input type="checkbox" aria-label="Complete task" style="width:20px;height:20px">
-            <div style="flex:1">
-              <div style="font-weight:600">Deep Work: "Main project"</div>
-              <div class="muted" style="font-size:13px">2/4 subtasks • focus</div>
-            </div>
-            <span style="font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08)">25m</span>
-            <button style="margin-left:8px;padding:6px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff">Start</button>
-          </li>
+          <ul style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
+            <li style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)">
+              <input type="checkbox" aria-label="Complete task" style="width:20px;height:20px">
+              <div style="flex:1">
+                <div style="font-weight:600">Deep Work: "Main project"</div>
+                <div class="muted" style="font-size:13px">2/4 subtasks • focus</div>
+              </div>
+              <span style="font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08)">25m</span>
+              <button style="margin-left:8px;padding:6px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff">Start</button>
+            </li>
 
-          <li style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)">
-            <input type="checkbox" style="width:20px;height:20px">
-            <div style="flex:1">
-              <div style="font-weight:600">Reply to messages</div>
-              <div class="muted" style="font-size:13px">No subtasks</div>
-            </div>
-            <span style="font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08)">×10</span>
-            <button style="margin-left:8px;padding:6px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff">Start</button>
-          </li>
+            <li style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)">
+              <input type="checkbox" style="width:20px;height:20px">
+              <div style="flex:1">
+                <div style="font-weight:600">Reply to messages</div>
+                <div class="muted" style="font-size:13px">No subtasks</div>
+              </div>
+              <span style="font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08)">×10</span>
+              <button style="margin-left:8px;padding:6px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff">Start</button>
+            </li>
 
-          <li style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)">
-            <input type="checkbox" style="width:20px;height:20px">
-            <div style="flex:1">
-              <div style="font-weight:600">Walk outside</div>
-              <div class="muted" style="font-size:13px">Wellbeing</div>
-            </div>
-            <span style="font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08)">15m</span>
-            <button style="margin-left:8px;padding:6px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff">Start</button>
-          </li>
-        </ul>
-      </div>
+            <li style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)">
+              <input type="checkbox" style="width:20px;height:20px">
+              <div style="flex:1">
+                <div style="font-weight:600">Walk outside</div>
+                <div class="muted" style="font-size:13px">Wellbeing</div>
+              </div>
+              <span style="font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08)">15m</span>
+              <button style="margin-left:8px;padding:6px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff">Start</button>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <section id="tab-week" hidden>
+        <div class="card">
+          <h2 style="margin:0 0 10px 0">Week (placeholder)</h2>
+          <div class="muted" style="margin-bottom:14px">Weekly view coming soon.</div>
+          <div class="day-grid">
+            <div class="day-box">M</div>
+            <div class="day-box">T</div>
+            <div class="day-box">W</div>
+            <div class="day-box">T</div>
+            <div class="day-box">F</div>
+            <div class="day-box">S</div>
+            <div class="day-box">S</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-settings" hidden>
+        <div class="card">
+          <h2 style="margin:0 0 16px 0">Settings (placeholder)</h2>
+          <div class="settings-row">
+            <span>Theme</span>
+            <span class="muted">System</span>
+          </div>
+          <div class="settings-row">
+            <span>Conflicts</span>
+            <span class="muted">On</span>
+          </div>
+        </div>
+      </section>
     </main>
 
     <div id="modal-backdrop" class="modal-backdrop" hidden>
@@ -130,11 +199,40 @@
       </div>
     </div>
 
+    <div class="tab-bar">
+      <button class="tab-btn" data-tab="today" aria-selected="true">Today</button>
+      <button class="tab-btn" data-tab="week" aria-selected="false">Week</button>
+      <button class="tab-btn" data-tab="settings" aria-selected="false">Settings</button>
+    </div>
+
     <button class="fab" aria-label="Add task">+ Add task</button>
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-0.5a
+      build: STEP-0.5b
     </div>
+
+    <script>
+      // Simple tab switching
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const targetTab = btn.dataset.tab;
+          
+          // Hide all sections
+          document.querySelectorAll('section[id^="tab-"]').forEach(section => {
+            section.hidden = true;
+          });
+          
+          // Show target section
+          document.getElementById(`tab-${targetTab}`).hidden = false;
+          
+          // Update tab button states
+          document.querySelectorAll('.tab-btn').forEach(b => {
+            b.setAttribute('aria-selected', 'false');
+          });
+          btn.setAttribute('aria-selected', 'true');
+        });
+      });
+    </script>
   </body>
 </html>
