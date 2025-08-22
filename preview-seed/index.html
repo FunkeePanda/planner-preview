@@ -136,6 +136,23 @@
       }
       .toast.show{ opacity:1; }
 
+      .task-ticking{
+        animation: subtle-tick 2s ease-in-out infinite;
+      }
+      @keyframes subtle-tick {
+        0%, 100% { box-shadow: 0 6px 28px rgba(0,0,0,.25); }
+        50% { box-shadow: 0 6px 28px rgba(108,99,255,.15), 0 0 0 1px rgba(108,99,255,.1); }
+      }
+
+      .timer-complete-pulse{
+        animation: complete-pulse 300ms ease-out;
+      }
+      @keyframes complete-pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.02); opacity: 0.8; }
+        100% { transform: scale(1); }
+      }
+
       input[type="checkbox"][data-role="toggle-done"] {
         width: 28px; height: 28px; min-width: 28px; min-height: 28px;
       }
@@ -193,8 +210,8 @@
     <main>
       <section id="tab-today">
         <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.3g</h2>
-          <div class="muted" style="margin-bottom:14px">Fixed checkbox event handling for proper completion toggle.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.4</h2>
+          <div class="muted" style="margin-bottom:14px">Lightweight per-task timers with auto-completion.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -211,7 +228,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.3g — active:0 done:0
+              build: STEP-1.4 — active:0 done:0
             </footer>
         </div>
       </section>
@@ -281,7 +298,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.3g
+      build: STEP-1.4
     </div>
 
     <script>
@@ -337,7 +354,14 @@
             minutes: typeof t.minutes === 'number' ? t.minutes : undefined,
             tag: t.tag || '',
             // Coerce any old flags (checked, done, isDone) into `completed`
-            completed: !!(t.completed || t.checked || t.done || t.isDone || false)
+            completed: !!(t.completed || t.checked || t.done || t.isDone || false),
+            // Add timer if missing (migration)
+            timer: t.timer || (t.minutes ? {
+              totalSec: t.minutes * 60,
+              remainingSec: t.minutes * 60,
+              status: 'idle',
+              updatedAt: Date.now()
+            } : null)
           }));
         } catch (e) {
           console.warn('Failed to parse stored tasks:', e);
@@ -351,6 +375,36 @@
         } catch (e) {
           console.warn('Failed to store tasks:', e);
         }
+      }
+
+      // Timer utilities
+      function formatTime(seconds) {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+      }
+
+      function tickTimer(task) {
+        if (!task.timer || task.timer.status !== 'running') return task;
+        const now = Date.now();
+        const elapsed = Math.floor((now - task.timer.updatedAt) / 1000);
+        const newRemaining = Math.max(0, task.timer.remainingSec - elapsed);
+        
+        return {
+          ...task,
+          timer: {
+            ...task.timer,
+            remainingSec: newRemaining,
+            updatedAt: now
+          }
+        };
+      }
+
+      // Debounced save to avoid localStorage thrashing
+      let saveTimeout;
+      function debouncedSave(tasks) {
+        clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(() => saveTasks(tasks), 1000);
       }
 
       // Placeholder for future native haptics
@@ -403,7 +457,26 @@
         card.dataset.taskId = task.id;
         
         const tagLine = task.tag ? `<div class="muted" style="font-size:13px">${task.tag}</div>` : '';
-        const durationPill = task.minutes ? `<span style="font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08)">${task.minutes}m</span>` : '';
+        
+        // Show live timer or static duration
+        let timerDisplay = '';
+        let buttonText = 'Start';
+        let resetLink = '';
+        
+        if (task.timer) {
+          const remaining = task.timer.remainingSec;
+          timerDisplay = `<span style="font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08)">${formatTime(remaining)}</span>`;
+          
+          if (task.timer.status === 'running') {
+            buttonText = 'Pause';
+            resetLink = '<button data-role="reset-timer" style="background:none;border:none;color:rgba(255,255,255,.6);font-size:11px;margin-left:8px;cursor:pointer">Reset</button>';
+          } else if (task.timer.status === 'paused') {
+            buttonText = 'Resume';
+            resetLink = '<button data-role="reset-timer" style="background:none;border:none;color:rgba(255,255,255,.6);font-size:11px;margin-left:8px;cursor:pointer">Reset</button>';
+          }
+        } else if (task.minutes) {
+          timerDisplay = `<span style="font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08)">${task.minutes}m</span>`;
+        }
         
         // Controlled checkbox - only reads task.completed, no other state
         card.innerHTML = `
@@ -415,12 +488,18 @@
             <div class="task-title" style="font-weight:600">${task.title}</div>
             ${tagLine}
           </div>
-          ${durationPill}
-          <button class="btn-start" style="margin-left:8px;padding:6px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff">Start</button>
+          ${timerDisplay}
+          <button class="btn-start" data-role="timer-control" style="margin-left:8px;padding:6px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff">${buttonText}</button>
+          ${resetLink}
         `;
         
         if (task.completed) {
           card.classList.add('task--done');
+        }
+        
+        // Add ticking animation if timer is running
+        if (task.timer && task.timer.status === 'running') {
+          card.classList.add('task-ticking');
         }
         
         return card;
@@ -526,6 +605,7 @@
 
         // State management (like React useState)
         let tasks = [];
+        let timerInterval = null;
 
         function setTasks(updater) {
           // Handle both direct values and updater functions (like React setState)
@@ -565,7 +645,26 @@
         // Single toggle function (matches your React pattern exactly)
         function toggleComplete(id) {
           setTasks(prev => {
-            const next = prev.map(t => (t.id === id ? { ...t, completed: !t.completed } : t));
+            const next = prev.map(t => {
+              if (t.id === id) {
+                const newCompleted = !t.completed;
+                let newTask = { ...t, completed: newCompleted };
+                
+                // If unchecking a completed task, reset its timer
+                if (!newCompleted && t.timer) {
+                  newTask.timer = {
+                    ...t.timer,
+                    remainingSec: t.timer.totalSec,
+                    status: 'idle',
+                    updatedAt: Date.now()
+                  };
+                  console.log('DevLog: Reset timer for unchecked task:', t.title);
+                }
+                
+                return newTask;
+              }
+              return t;
+            });
             
             // Announce change
             const task = next.find(t => t.id === id);
@@ -586,7 +685,133 @@
         }
 
         function addTask(taskData) {
+          // Add timer to new tasks if they have minutes
+          if (taskData.minutes && !taskData.timer) {
+            taskData.timer = {
+              totalSec: taskData.minutes * 60,
+              remainingSec: taskData.minutes * 60,
+              status: 'idle',
+              updatedAt: Date.now()
+            };
+          }
           setTasks(prev => [taskData, ...prev]);
+        }
+
+        // Timer management
+        function startTimer(taskId) {
+          setTasks(prev => {
+            const next = prev.map(t => {
+              if (t.id === taskId) {
+                // Start this timer
+                return {
+                  ...t,
+                  timer: t.timer ? {
+                    ...t.timer,
+                    status: 'running',
+                    updatedAt: Date.now()
+                  } : null
+                };
+              } else if (t.timer && t.timer.status === 'running') {
+                // Pause any other running timer
+                return {
+                  ...t,
+                  timer: {
+                    ...t.timer,
+                    status: 'paused',
+                    updatedAt: Date.now()
+                  }
+                };
+              }
+              return t;
+            });
+            return next;
+          });
+          
+          // Start the global timer interval
+          if (!timerInterval) {
+            timerInterval = setInterval(updateRunningTimers, 1000);
+          }
+        }
+
+        function pauseTimer(taskId) {
+          setTasks(prev => {
+            const next = prev.map(t => 
+              t.id === taskId && t.timer ? {
+                ...t,
+                timer: {
+                  ...t.timer,
+                  status: 'paused',
+                  updatedAt: Date.now()
+                }
+              } : t
+            );
+            return next;
+          });
+        }
+
+        function resetTimer(taskId) {
+          setTasks(prev => {
+            const next = prev.map(t => 
+              t.id === taskId && t.timer ? {
+                ...t,
+                timer: {
+                  ...t.timer,
+                  remainingSec: t.timer.totalSec,
+                  status: 'idle',
+                  updatedAt: Date.now()
+                }
+              } : t
+            );
+            return next;
+          });
+        }
+
+        function updateRunningTimers() {
+          let hasRunningTimer = false;
+          
+          setTasks(prev => {
+            const next = prev.map(task => {
+              if (task.timer && task.timer.status === 'running') {
+                hasRunningTimer = true;
+                const ticked = tickTimer(task);
+                
+                // Auto-complete if timer reaches 0
+                if (ticked.timer.remainingSec === 0 && !task.completed) {
+                  console.log('DevLog: Timer completed for task:', task.title);
+                  
+                  // Add completion pulse animation
+                  setTimeout(() => {
+                    const card = document.querySelector(`[data-task-id="${task.id}"]`);
+                    if (card) {
+                      card.classList.add('timer-complete-pulse');
+                      setTimeout(() => card.classList.remove('timer-complete-pulse'), 300);
+                    }
+                  }, 100);
+                  
+                  return {
+                    ...ticked,
+                    completed: true,
+                    timer: {
+                      ...ticked.timer,
+                      status: 'idle'
+                    }
+                  };
+                }
+                return ticked;
+              }
+              return task;
+            });
+            
+            // Use debounced save for running timers
+            debouncedSave(next);
+            return next;
+          });
+          
+          // Clean up interval if no running timers
+          if (!hasRunningTimer && timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+          }
         }
 
         function renderTasks() {
@@ -618,7 +843,7 @@
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.3g — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.4 — active:${activeCount} done:${doneCount}`;
           }
         }
 
@@ -637,9 +862,43 @@
           }
         }
 
+        // Timer control event handler
+        function handleTimerControl(e) {
+          const button = e.target;
+          if (button.dataset.role === 'timer-control') {
+            const card = button.closest('div[style*="display:flex"]');
+            const taskId = card?.dataset.taskId;
+            const task = tasks.find(t => t.id === taskId);
+            
+            if (taskId && task && task.timer) {
+              if (task.timer.status === 'idle') {
+                console.log('DevLog: Starting timer for:', task.title);
+                startTimer(taskId);
+              } else if (task.timer.status === 'running') {
+                console.log('DevLog: Pausing timer for:', task.title);
+                pauseTimer(taskId);
+              } else if (task.timer.status === 'paused') {
+                console.log('DevLog: Resuming timer for:', task.title);
+                startTimer(taskId);
+              }
+            }
+          } else if (button.dataset.role === 'reset-timer') {
+            const card = button.closest('div[style*="display:flex"]');
+            const taskId = card?.dataset.taskId;
+            const task = tasks.find(t => t.id === taskId);
+            
+            if (taskId && task) {
+              console.log('DevLog: Resetting timer for:', task.title);
+              resetTimer(taskId);
+            }
+          }
+        }
+
         // Event listeners
         todayList?.addEventListener('change', handleCheckboxChange);
         completedList?.addEventListener('change', handleCheckboxChange);
+        todayList?.addEventListener('click', handleTimerControl);
+        completedList?.addEventListener('click', handleTimerControl);
 
         clearBtn?.addEventListener('click', clearCompleted);
 
@@ -647,6 +906,14 @@
         function loadTasksFromStorage() {
           // Initialize state with loadTasks() (like useState(loadTasks()))
           tasks = loadTasks();
+          
+          // Resume any running timers
+          const hasRunningTimer = tasks.some(t => t.timer && t.timer.status === 'running');
+          if (hasRunningTimer && !timerInterval) {
+            console.log('DevLog: Resuming timers on page load');
+            timerInterval = setInterval(updateRunningTimers, 1000);
+          }
+          
           renderTasks();
         }
 
