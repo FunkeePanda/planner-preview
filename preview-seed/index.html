@@ -35,9 +35,53 @@
     </header>
     <main>
       <div class="card">
-        <h2 style="margin:0 0 6px 0">Today (placeholder)</h2>
-        <div class="muted">We'll replace this with the real Today screen next.</div>
+        <h2 style="margin:0 0 10px 0">Today</h2>
+        <div class="muted" style="margin-bottom:14px">A simple preview of how tasks will look.</div>
+
+        <ul style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
+          <!-- Task row 1 -->
+          <li style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)">
+            <input type="checkbox" aria-label="Complete task" style="width:20px;height:20px">
+            <div style="flex:1">
+              <div style="font-weight:600">Deep Work: "Main project"</div>
+              <div class="muted" style="font-size:13px">2/4 subtasks • focus</div>
+            </div>
+            <span style="font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08)">25m</span>
+            <button style="margin-left:8px;padding:6px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff">Start</button>
+          </li>
+
+          <!-- Task row 2 -->
+          <li style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)">
+            <input type="checkbox" style="width:20px;height:20px">
+            <div style="flex:1">
+              <div style="font-weight:600">Reply to messages</div>
+              <div class="muted" style="font-size:13px">No subtasks</div>
+            </div>
+            <span style="font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08)">×10</span>
+            <button style="margin-left:8px;padding:6px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff">Start</button>
+          </li>
+
+          <!-- Task row 3 -->
+          <li style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)">
+            <input type="checkbox" style="width:20px;height:20px">
+            <div style="flex:1">
+              <div style="font-weight:600">Walk outside</div>
+              <div class="muted" style="font-size:13px">Wellbeing</div>
+            </div>
+            <span style="font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08)">15m</span>
+            <button style="margin-left:8px;padding:6px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff">Start</button>
+          </li>
+        </ul>
       </div>
+
+      <!-- Floating add button -->
+      <button aria-label="Add task" style="
+        position:fixed;right:16px;bottom:16px;height:54px;min-width:54px;padding:0 16px;
+        border-radius:999px;border:1px solid rgba(255,255,255,.25);
+        background:linear-gradient(160deg,rgba(255,255,255,.18),rgba(255,255,255,.10));
+        backdrop-filter:saturate(140%) blur(8px);color:#fff;font-weight:600;box-shadow:0 10px 28px rgba(0,0,0,.35)">
+        + Add task
+      </button>
     </main>
   </body>
 </html>
