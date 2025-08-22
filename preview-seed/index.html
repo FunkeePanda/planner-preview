@@ -193,8 +193,8 @@
     <main>
       <section id="tab-today">
         <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.2b</h2>
-          <div class="muted" style="margin-bottom:14px">Interactive task creation + completion sorting.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.3</h2>
+          <div class="muted" style="margin-bottom:14px">Interactive tasks with local persistence.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <div style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)">
@@ -303,10 +303,35 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.2b
+      build: STEP-1.3
     </div>
 
     <script>
+      // Storage helper
+      const STORAGE_KEY = "planner:today:v1";
+      
+      function generateId() {
+        return Date.now().toString() + Math.random().toString(36).substr(2, 5);
+      }
+
+      function getTodayTasks() {
+        try {
+          const stored = localStorage.getItem(STORAGE_KEY);
+          return stored ? JSON.parse(stored) : [];
+        } catch (e) {
+          console.warn('Failed to parse stored tasks:', e);
+          return [];
+        }
+      }
+
+      function setTodayTasks(tasks) {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+        } catch (e) {
+          console.warn('Failed to store tasks:', e);
+        }
+      }
+
       // Placeholder for future native haptics
       function tryHaptic(type) {
         console.log(`Haptic feedback: ${type}`);
@@ -351,24 +376,46 @@
       }
 
       // Task creation helper
-      function createTaskCard(title, duration, tag) {
+      function createTaskCard(task) {
         const card = document.createElement('div');
         card.style.cssText = 'display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)';
+        card.dataset.taskId = task.id;
         
-        const tagLine = tag ? `<div class="muted" style="font-size:13px">${tag}</div>` : '';
-        const durationPill = duration ? `<span style="font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08)">${duration}m</span>` : '';
+        const tagLine = task.tag ? `<div class="muted" style="font-size:13px">${task.tag}</div>` : '';
+        const durationPill = task.minutes ? `<span style="font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08)">${task.minutes}m</span>` : '';
         
         card.innerHTML = `
-          <input type="checkbox" data-role="toggle-done" aria-label="Complete task">
+          <input type="checkbox" data-role="toggle-done" aria-label="Complete task" ${task.completed ? 'checked' : ''}>
           <div style="flex:1">
-            <div class="task-title" style="font-weight:600">${title}</div>
+            <div class="task-title" style="font-weight:600">${task.title}</div>
             ${tagLine}
           </div>
           ${durationPill}
           <button class="btn-start" style="margin-left:8px;padding:6px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff">Start</button>
         `;
         
+        if (task.completed) {
+          card.classList.add('task--done');
+        }
+        
         return card;
+      }
+
+      // Get task data from DOM card
+      function getTaskFromCard(card) {
+        const checkbox = card.querySelector('input[data-role="toggle-done"]');
+        const titleEl = card.querySelector('.task-title');
+        const tagEl = card.querySelector('.muted');
+        const durationEl = card.querySelector('span[style*="border-radius:999px"]');
+        
+        return {
+          id: card.dataset.taskId,
+          title: titleEl ? titleEl.textContent : '',
+          tag: tagEl ? tagEl.textContent : '',
+          minutes: durationEl ? parseInt(durationEl.textContent) : undefined,
+          completed: checkbox ? checkbox.checked : false,
+          createdAt: new Date().toISOString()
+        };
       }
 
       // Modal management
@@ -422,9 +469,22 @@
             return;
           }
 
+          // Create task object
+          const task = {
+            id: generateId(),
+            title: title,
+            tag: tag || undefined,
+            minutes: duration ? parseInt(duration) : undefined,
+            completed: false,
+            createdAt: new Date().toISOString()
+          };
+
           // Create and add task card
-          const taskCard = createTaskCard(title, duration, tag);
+          const taskCard = createTaskCard(task);
           todayList.insertBefore(taskCard, todayList.firstChild);
+
+          // Save to storage
+          saveTasksToStorage();
 
           // Close modal and show toast
           hideModal();
@@ -435,7 +495,7 @@
         window.__modal = { show: showModal, hide: hideModal };
       })();
 
-      // Task completion toggle
+      // Task completion toggle and persistence
       (function () {
         const todayList = document.getElementById('today-list');
         const completedList = document.getElementById('completed-list');
@@ -451,6 +511,29 @@
           const count = completedList.children.length;
           completedCount.textContent = count;
         }
+
+        function saveTasksToStorage() {
+          const allTasks = [];
+          
+          // Collect active tasks
+          Array.from(todayList.children).forEach(card => {
+            if (card.dataset.taskId) {
+              allTasks.push(getTaskFromCard(card));
+            }
+          });
+          
+          // Collect completed tasks
+          Array.from(completedList.children).forEach(card => {
+            if (card.dataset.taskId) {
+              allTasks.push(getTaskFromCard(card));
+            }
+          });
+          
+          setTodayTasks(allTasks);
+        }
+
+        // Make saveTasksToStorage available globally
+        window.saveTasksToStorage = saveTasksToStorage;
 
         function handleTaskToggle(checkbox) {
           const card = checkbox.closest('div[style*="display:flex"]');
@@ -471,6 +554,7 @@
               announce('Task active');
             }
             updateCompletedCount();
+            saveTasksToStorage();
           }
         }
 
@@ -493,10 +577,44 @@
         clearBtn?.addEventListener('click', () => {
           completedList.innerHTML = '';
           updateCompletedCount();
+          saveTasksToStorage();
         });
 
-        // Initialize count
-        updateCompletedCount();
+        // Load tasks from storage on init
+        function loadTasksFromStorage() {
+          const storedTasks = getTodayTasks();
+          
+          if (storedTasks.length === 0) {
+            // Keep existing seed data if no stored tasks
+            // Add IDs to existing cards
+            Array.from(todayList.children).forEach(card => {
+              if (!card.dataset.taskId) {
+                card.dataset.taskId = generateId();
+              }
+            });
+            saveTasksToStorage();
+            return;
+          }
+
+          // Clear existing tasks
+          todayList.innerHTML = '';
+          completedList.innerHTML = '';
+
+          // Recreate tasks from storage
+          storedTasks.forEach(task => {
+            const card = createTaskCard(task);
+            if (task.completed) {
+              completedList.appendChild(card);
+            } else {
+              todayList.appendChild(card);
+            }
+          });
+
+          updateCompletedCount();
+        }
+
+        // Initialize
+        loadTasksFromStorage();
       })();
     </script>
   </body>
