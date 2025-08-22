@@ -210,8 +210,8 @@
     <main>
       <section id="tab-today">
         <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.4.2</h2>
-          <div class="muted" style="margin-bottom:14px">Fixed checkbox visual state preservation during re-renders.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.4.3-debug</h2>
+          <div class="muted" style="margin-bottom:14px">Added extensive logging to diagnose checkbox behavior.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -923,14 +923,21 @@
 
         // Controlled checkbox event delegation
         function handleCheckboxChange(e) {
+          console.log('🔄 Checkbox change event fired');
           const checkbox = e.target;
+          console.log('Checkbox details:', { type: checkbox.type, role: checkbox.dataset.role, checked: checkbox.checked });
+          
           if (checkbox.type === 'checkbox' && checkbox.dataset.role === 'toggle-done') {
             const card = checkbox.closest('div[style*="display:flex"]');
             const taskId = card?.dataset.taskId;
+            console.log('Found card with taskId:', taskId);
             
             if (taskId) {
+              console.log('Calling toggleComplete for task:', taskId);
               // Don't prevent default - let checkbox update naturally, then sync state
               toggleComplete(taskId);
+            } else {
+              console.log('❌ No taskId found on card');
             }
           }
         }
