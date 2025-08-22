@@ -210,8 +210,8 @@
     <main>
       <section id="tab-today">
         <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.4.1</h2>
-          <div class="muted" style="margin-bottom:14px">Fixed checkbox completion flow + added test IDs.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.4.2</h2>
+          <div class="muted" style="margin-bottom:14px">Fixed checkbox visual state preservation during re-renders.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -228,7 +228,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.4.1 — active:0 done:0
+              build: STEP-1.4.2 — active:0 done:0
             </footer>
         </div>
       </section>
@@ -298,7 +298,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.4.1
+      build: STEP-1.4.2
     </div>
 
     <script>
@@ -824,19 +824,46 @@
 
           console.log('DevLog: Rendering tasks - active:', active.length, 'done:', done.length);
 
-          // Clear existing DOM
+          // Get existing cards to avoid destroying checkbox state
+          const existingCards = new Map();
+          Array.from(todayList.children).forEach(card => {
+            if (card.dataset.taskId) {
+              existingCards.set(card.dataset.taskId, card);
+            }
+          });
+          Array.from(completedList.children).forEach(card => {
+            if (card.dataset.taskId) {
+              existingCards.set(card.dataset.taskId, card);
+            }
+          });
+
+          // Clear containers
           todayList.innerHTML = '';
           completedList.innerHTML = '';
 
-          // Render active tasks (like active.map(task => <TaskRow key={task.id} task={task} toggleComplete={toggleComplete} />))
+          // Render active tasks - reuse existing cards where possible
           active.forEach(task => {
-            const card = createTaskCard(task);
+            let card = existingCards.get(task.id);
+            if (card) {
+              // Update existing card state
+              updateCardFromTask(card, task);
+            } else {
+              // Create new card
+              card = createTaskCard(task);
+            }
             todayList.appendChild(card);
           });
 
-          // Render completed tasks (like done.map(task => <TaskRow key={task.id} task={task} toggleComplete={toggleComplete} muted />))
+          // Render completed tasks - reuse existing cards where possible  
           done.forEach(task => {
-            const card = createTaskCard(task);
+            let card = existingCards.get(task.id);
+            if (card) {
+              // Update existing card state
+              updateCardFromTask(card, task);
+            } else {
+              // Create new card
+              card = createTaskCard(task);
+            }
             completedList.appendChild(card);
           });
 
@@ -845,10 +872,52 @@
           updateDebugFooter(active.length, done.length);
         }
 
+        function updateCardFromTask(card, task) {
+          // Update checkbox state without destroying it
+          const checkbox = card.querySelector('input[data-role="toggle-done"]');
+          if (checkbox) {
+            checkbox.checked = task.completed;
+            checkbox.setAttribute('aria-label', `Mark ${task.title} ${task.completed ? 'incomplete' : 'complete'}`);
+          }
+
+          // Update visual state
+          if (task.completed) {
+            card.classList.add('task--done');
+          } else {
+            card.classList.remove('task--done');
+          }
+
+          // Update ticking animation
+          if (task.timer && task.timer.status === 'running') {
+            card.classList.add('task-ticking');
+          } else {
+            card.classList.remove('task-ticking');
+          }
+
+          // Update timer display and button text
+          const timerSpan = card.querySelector('span[style*="border-radius:999px"]');
+          const startBtn = card.querySelector('[data-role="timer-control"]');
+          const resetBtn = card.querySelector('[data-role="reset-timer"]');
+
+          if (task.timer && timerSpan) {
+            timerSpan.textContent = formatTime(task.timer.remainingSec);
+          }
+
+          if (startBtn && task.timer) {
+            if (task.timer.status === 'running') {
+              startBtn.textContent = 'Pause';
+            } else if (task.timer.status === 'paused') {
+              startBtn.textContent = 'Resume';
+            } else {
+              startBtn.textContent = 'Start';
+            }
+          }
+        }
+
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.4.1 — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.4.2 — active:${activeCount} done:${doneCount}`;
           }
         }
 
