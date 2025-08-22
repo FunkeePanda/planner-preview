@@ -15,7 +15,6 @@
       .card{background:var(--glass);border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:16px 18px;box-shadow:0 6px 28px rgba(0,0,0,.25)}
       .muted{opacity:.8}
 
-      /* FAB */
       .fab{
         position:fixed;
         right:max(16px, env(safe-area-inset-right) + 12px);
@@ -29,16 +28,10 @@
         z-index:9999;
       }
       .fab:active{ transform: translateY(1px); }
-
-      @media (min-width:768px){ main{margin:24px auto;padding:24px} .card{padding:22px 24px} }
     </style>
   </head>
   <body>
-    <header>
-      <div class="bar">
-        <div class="title">Planner App</div>
-      </div>
-    </header>
+    <header><div class="bar"><div class="title">Planner App</div></div></header>
 
     <main>
       <div class="card">
@@ -46,7 +39,6 @@
         <div class="muted" style="margin-bottom:14px">Static preview of tasks.</div>
 
         <ul style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
-          <!-- Task 1 -->
           <li style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)">
             <input type="checkbox" aria-label="Complete task" style="width:20px;height:20px">
             <div style="flex:1">
@@ -57,7 +49,6 @@
             <button style="margin-left:8px;padding:6px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff">Start</button>
           </li>
 
-          <!-- Task 2 -->
           <li style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)">
             <input type="checkbox" style="width:20px;height:20px">
             <div style="flex:1">
@@ -68,7 +59,6 @@
             <button style="margin-left:8px;padding:6px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff">Start</button>
           </li>
 
-          <!-- Task 3 -->
           <li style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)">
             <input type="checkbox" style="width:20px;height:20px">
             <div style="flex:1">
@@ -82,9 +72,11 @@
       </div>
     </main>
 
-    <!-- Floating Add Task button -->
     <button class="fab" aria-label="Add task">+ Add task</button>
 
-    <!-- build-stamp: will be replaced by CI cache-bust -->
+    <!-- build-stamp: to verify deploy -->
+    <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
+      build: STEP-0.3
+    </div>
   </body>
 </html>
