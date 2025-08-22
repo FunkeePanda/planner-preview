@@ -5,7 +5,7 @@
   "main": "index.html",
   "scripts": {
     "start": "python3 -m http.server 8000",
-    "build": "echo 'No build step required for static site'"
+    "build": "node preview-seed/build.js"
   },
   "repository": {
     "type": "git",
