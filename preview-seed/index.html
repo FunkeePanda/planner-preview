@@ -193,8 +193,8 @@
     <main>
       <section id="tab-today">
         <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.3d</h2>
-          <div class="muted" style="margin-bottom:14px">Migration-friendly storage with UUID support.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.3e</h2>
+          <div class="muted" style="margin-bottom:14px">React-style state management patterns.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -210,7 +210,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.3d — active:0 done:0
+              build: STEP-1.3e — active:0 done:0
             </footer>
         </div>
       </section>
@@ -280,7 +280,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.3d
+      build: STEP-1.3e
     </div>
 
     <script>
@@ -521,63 +521,69 @@
         const clearBtn = document.getElementById('clear-completed');
         const announcements = document.getElementById('task-announcements');
 
-        // In-memory task state
+        // State management (like React useState)
         let tasks = [];
+
+        function setTasks(updater) {
+          // Handle both direct values and updater functions (like React setState)
+          const prev = tasks;
+          const next = typeof updater === 'function' ? updater(prev) : updater;
+          tasks = next;
+          
+          // Auto-save and re-render on state change
+          saveTasks(next);
+          renderTasks();
+        }
+
+        // Derived state (like useMemo)
+        function getActive() {
+          return tasks.filter(t => !t.completed);
+        }
+
+        function getDone() {
+          return tasks.filter(t => t.completed);
+        }
 
         function announce(text) {
           announcements.textContent = text;
         }
 
         function updateCompletedCount() {
-          const doneCount = tasks.filter(t => t.completed).length;
+          const doneCount = getDone().length;
           completedCount.textContent = doneCount;
         }
 
-        function saveTasksToStorage() {
-          saveTasks(tasks);
+        // Single toggle function (matches your React pattern exactly)
+        function toggleComplete(id) {
+          setTasks(prev => {
+            const next = prev.map(t => (t.id === id ? { ...t, completed: !t.completed } : t));
+            
+            // Announce change
+            const task = next.find(t => t.id === id);
+            if (task) {
+              announce(task.completed ? 'Task completed' : 'Task active');
+            }
+            
+            return next;
+          });
         }
 
-        function toggleComplete(taskId) {
-          // Update state immutably
-          tasks = tasks.map(task => 
-            task.id === taskId 
-              ? { ...task, completed: !task.completed }
-              : task
-          );
-          
-          // Re-render and persist
-          renderTasks();
-          saveTasksToStorage();
-          
-          // Announce change
-          const task = tasks.find(t => t.id === taskId);
-          if (task) {
-            announce(task.completed ? 'Task completed' : 'Task active');
-          }
-        }
-
+        // Clear completed -> mark all as not completed (matches your React pattern)
         function clearCompleted() {
-          // Reset all tasks to incomplete (like the Clear button spec)
-          tasks = tasks.map(task => ({ ...task, completed: false }));
-          
-          // Re-render and persist
-          renderTasks();
-          saveTasksToStorage();
+          setTasks(prev => {
+            const next = prev.map(t => (t.completed ? { ...t, completed: false } : t));
+            return next;
+          });
         }
 
         function addTask(taskData) {
-          // Add to state
-          tasks = [taskData, ...tasks];
-          
-          // Re-render and persist
-          renderTasks();
-          saveTasksToStorage();
+          setTasks(prev => [taskData, ...prev]);
         }
 
         function renderTasks() {
           // Derive lists from state (like useMemo)
-          const active = tasks.filter(t => !t.completed);
-          const done = tasks.filter(t => t.completed);
+          const active = getActive();
+          const done = getDone();
 
           // Clear existing DOM
           todayList.innerHTML = '';
@@ -602,7 +608,7 @@
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.3d — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.3e — active:${activeCount} done:${doneCount}`;
           }
         }
 
@@ -627,9 +633,9 @@
 
         clearBtn?.addEventListener('click', clearCompleted);
 
-        // Load tasks from storage on init
+        // Load tasks from storage on init (like useState initialization)
         function loadTasksFromStorage() {
-          // Use the migration-friendly loadTasks function
+          // Initialize state with loadTasks() (like useState(loadTasks()))
           tasks = loadTasks();
           renderTasks();
         }
@@ -637,7 +643,10 @@
         // Expose functions globally
         window.toggleComplete = toggleComplete;
         window.addTask = addTask;
-        window.saveTasksToStorage = saveTasksToStorage;
+        window.clearCompleted = clearCompleted;
+        window.setTasks = setTasks;
+        window.getActive = getActive;
+        window.getDone = getDone;
         window.loadTasks = loadTasks;
         window.saveTasks = saveTasks;
 
