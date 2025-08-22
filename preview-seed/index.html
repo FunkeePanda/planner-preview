@@ -62,6 +62,7 @@
         display:flex; align-items:center; justify-content:center;
         z-index:10000;
       }
+      .modal-backdrop[hidden] { display: none !important; pointer-events: none !important; }
       .modal{
         background:var(--glass-strong); border:1px solid var(--border-light);
         border-radius:var(--radius-md); padding:24px; min-width:320px; max-width:90vw;
@@ -198,8 +199,8 @@
         <input type="text" placeholder="Task title" />
         <textarea placeholder="Notes (optional)" rows="3"></textarea>
         <div class="modal-actions">
-          <button class="btn">Cancel</button>
-          <button class="btn">Save</button>
+          <button id="modal-cancel" class="btn">Cancel</button>
+          <button id="modal-save" class="btn">Save</button>
         </div>
       </div>
     </div>
@@ -214,7 +215,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-0.5c
+      build: STEP-0.5c-fix
     </div>
 
     <script>
@@ -246,6 +247,32 @@
           btn.setAttribute('aria-selected', 'true');
         });
       });
+
+      // Modal management
+      (function () {
+        const backdrop = document.getElementById('modal-backdrop');
+        const cancelBtn = document.getElementById('modal-cancel');
+        const saveBtn   = document.getElementById('modal-save');
+
+        function hideModal(){ backdrop.setAttribute('hidden',''); }
+        function showModal(){ backdrop.removeAttribute('hidden'); } // keep for later
+
+        // Ensure hidden on load
+        hideModal();
+
+        // Close on Cancel, Save, clicking the dim area, or Esc
+        cancelBtn?.addEventListener('click', hideModal);
+        saveBtn?.addEventListener('click', hideModal);
+        backdrop?.addEventListener('click', (e) => {
+          if (e.target === backdrop) hideModal();
+        });
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') hideModal();
+        });
+
+        // Expose for future use (optional)
+        window.__modal = { show: showModal, hide: hideModal };
+      })();
     </script>
   </body>
 </html>
