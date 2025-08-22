@@ -30,6 +30,9 @@ jobs:
       - name: Run build script
         run: npm run build
       
+      - name: Apply cache-busting
+        run: .github/scripts/cache_bust.sh preview-seed
+      
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
