@@ -136,15 +136,42 @@
       }
       .toast.show{ opacity:1; }
 
+      input[type="checkbox"][data-role="toggle-done"] {
+        width: 28px; height: 28px; min-width: 28px; min-height: 28px;
+      }
+      
       .task--done{
         opacity:0.4;
       }
       .task--done .task-title{
         text-decoration:line-through;
+        opacity:.65;
       }
-      .task--done button{
-        opacity:0;
-        pointer-events:none;
+      .task--done .btn-start{
+        display:none;
+      }
+
+      .row{
+        display:flex;
+        align-items:center;
+      }
+      .between{
+        justify-content:space-between;
+      }
+      .small{
+        font-size:13px;
+      }
+      .link-btn{
+        background:none;
+        border:none;
+        color:var(--text-primary);
+        text-decoration:underline;
+        cursor:pointer;
+        font:inherit;
+        padding:0;
+      }
+      .link-btn:hover{
+        opacity:.8;
       }
 
       .sr-only{
@@ -166,40 +193,48 @@
     <main>
       <section id="tab-today">
         <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.2a</h2>
-          <div class="muted" style="margin-bottom:14px">Interactive task creation + completion toggles.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.2b</h2>
+          <div class="muted" style="margin-bottom:14px">Interactive task creation + completion sorting.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <div style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)">
-              <input type="checkbox" data-role="toggle-done" aria-label="Complete task" style="width:20px;height:20px">
+              <input type="checkbox" data-role="toggle-done" aria-label="Complete task">
               <div style="flex:1">
                 <div class="task-title" style="font-weight:600">Deep Work: "Main project"</div>
                 <div class="muted" style="font-size:13px">2/4 subtasks • focus</div>
               </div>
               <span style="font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08)">25m</span>
-              <button style="margin-left:8px;padding:6px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff">Start</button>
+              <button class="btn-start" style="margin-left:8px;padding:6px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff">Start</button>
             </div>
 
             <div style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)">
-              <input type="checkbox" data-role="toggle-done" style="width:20px;height:20px">
+              <input type="checkbox" data-role="toggle-done">
               <div style="flex:1">
                 <div class="task-title" style="font-weight:600">Reply to messages</div>
                 <div class="muted" style="font-size:13px">No subtasks</div>
               </div>
               <span style="font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08)">×10</span>
-              <button style="margin-left:8px;padding:6px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff">Start</button>
+              <button class="btn-start" style="margin-left:8px;padding:6px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff">Start</button>
             </div>
 
             <div style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)">
-              <input type="checkbox" data-role="toggle-done" style="width:20px;height:20px">
+              <input type="checkbox" data-role="toggle-done">
               <div style="flex:1">
                 <div class="task-title" style="font-weight:600">Walk outside</div>
                 <div class="muted" style="font-size:13px">Wellbeing</div>
               </div>
               <span style="font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08)">15m</span>
-              <button style="margin-left:8px;padding:6px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff">Start</button>
+              <button class="btn-start" style="margin-left:8px;padding:6px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff">Start</button>
             </div>
           </div>
+
+          <section id="today-completed" aria-label="Completed tasks" style="margin-top:20px">
+            <header class="row between small muted" style="margin-bottom:12px">
+              <div>Completed (<span id="completed-count">0</span>)</div>
+              <button id="clear-completed" class="link-btn" aria-label="Clear completed tasks">Clear</button>
+            </header>
+            <div id="completed-list" style="display:grid;gap:10px"></div>
+          </section>
         </div>
       </section>
 
@@ -268,7 +303,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.2a
+      build: STEP-1.2b
     </div>
 
     <script>
@@ -324,13 +359,13 @@
         const durationPill = duration ? `<span style="font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08)">${duration}m</span>` : '';
         
         card.innerHTML = `
-          <input type="checkbox" data-role="toggle-done" aria-label="Complete task" style="width:20px;height:20px">
+          <input type="checkbox" data-role="toggle-done" aria-label="Complete task">
           <div style="flex:1">
             <div class="task-title" style="font-weight:600">${title}</div>
             ${tagLine}
           </div>
           ${durationPill}
-          <button style="margin-left:8px;padding:6px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff">Start</button>
+          <button class="btn-start" style="margin-left:8px;padding:6px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff">Start</button>
         `;
         
         return card;
@@ -403,32 +438,65 @@
       // Task completion toggle
       (function () {
         const todayList = document.getElementById('today-list');
+        const completedList = document.getElementById('completed-list');
+        const completedCount = document.getElementById('completed-count');
+        const clearBtn = document.getElementById('clear-completed');
         const announcements = document.getElementById('task-announcements');
 
         function announce(text) {
           announcements.textContent = text;
         }
 
-        // Delegate checkbox changes
+        function updateCompletedCount() {
+          const count = completedList.children.length;
+          completedCount.textContent = count;
+        }
+
+        function handleTaskToggle(checkbox) {
+          const card = checkbox.closest('div[style*="display:flex"]');
+          const isChecked = checkbox.checked;
+          
+          if (card) {
+            if (isChecked) {
+              // Mark as done and move to completed
+              card.classList.add('task--done');
+              checkbox.setAttribute('aria-checked', 'true');
+              completedList.prepend(card);
+              announce('Task completed');
+            } else {
+              // Mark as active and move back to today
+              card.classList.remove('task--done');
+              checkbox.setAttribute('aria-checked', 'false');
+              todayList.prepend(card);
+              announce('Task active');
+            }
+            updateCompletedCount();
+          }
+        }
+
+        // Delegate checkbox changes on both lists
         todayList?.addEventListener('change', (e) => {
           const checkbox = e.target;
           if (checkbox.type === 'checkbox' && checkbox.dataset.role === 'toggle-done') {
-            const card = checkbox.closest('div[style*="display:flex"]');
-            const isChecked = checkbox.checked;
-            
-            if (card) {
-              if (isChecked) {
-                card.classList.add('task--done');
-                checkbox.setAttribute('aria-checked', 'true');
-                announce('Task completed');
-              } else {
-                card.classList.remove('task--done');
-                checkbox.setAttribute('aria-checked', 'false');
-                announce('Task active');
-              }
-            }
+            handleTaskToggle(checkbox);
           }
         });
+
+        completedList?.addEventListener('change', (e) => {
+          const checkbox = e.target;
+          if (checkbox.type === 'checkbox' && checkbox.dataset.role === 'toggle-done') {
+            handleTaskToggle(checkbox);
+          }
+        });
+
+        // Clear completed tasks
+        clearBtn?.addEventListener('click', () => {
+          completedList.innerHTML = '';
+          updateCompletedCount();
+        });
+
+        // Initialize count
+        updateCompletedCount();
       })();
     </script>
   </body>
