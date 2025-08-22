@@ -193,8 +193,8 @@
     <main>
       <section id="tab-today">
         <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.3c</h2>
-          <div class="muted" style="margin-bottom:14px">State-driven tasks with proper completion flow.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.3d</h2>
+          <div class="muted" style="margin-bottom:14px">Migration-friendly storage with UUID support.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -210,7 +210,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.3c — active:0 done:0
+              build: STEP-1.3d — active:0 done:0
             </footer>
         </div>
       </section>
@@ -280,36 +280,73 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.3c
+      build: STEP-1.3d
     </div>
 
     <script>
-      // Storage helper
-      const STORAGE_KEY = "planner:today:v1";
+      // Storage helper with migration support
+      const LS_KEY = 'planner.tasks.v1';
       
       function generateId() {
+        // Use crypto.randomUUID if available, fallback to timestamp + random
+        if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+          return crypto.randomUUID();
+        }
         return Date.now().toString() + Math.random().toString(36).substr(2, 5);
       }
 
-      function getTodayTasks() {
+      function seedTasks() {
+        const base = [
+          { 
+            id: generateId(), 
+            title: 'Deep Work: "Main project"', 
+            completed: false, 
+            tag: '2/4 subtasks • focus',
+            minutes: 25
+          },
+          { 
+            id: generateId(), 
+            title: 'Reply to messages', 
+            completed: false, 
+            tag: 'No subtasks'
+          },
+          { 
+            id: generateId(), 
+            title: 'Walk outside', 
+            completed: false, 
+            tag: 'Wellbeing', 
+            minutes: 15
+          }
+        ];
+        localStorage.setItem(LS_KEY, JSON.stringify(base));
+        return base;
+      }
+
+      function loadTasks() {
         try {
-          const stored = localStorage.getItem(STORAGE_KEY);
-          const tasks = stored ? JSON.parse(stored) : [];
+          const raw = localStorage.getItem(LS_KEY);
+          if (!raw) return seedTasks();
+          const parsed = JSON.parse(raw);
           
-          // Coerce completed to boolean (safeguard for corrupted data)
-          return tasks.map(task => ({
-            ...task,
-            completed: Boolean(task.completed)
+          // Migration-friendly task normalization
+          return parsed.map(t => ({
+            id: String(t.id || generateId()),
+            title: String(t.title || 'Untitled'),
+            note: t.note || '',
+            minutes: typeof t.minutes === 'number' ? t.minutes : undefined,
+            tag: t.tag || '',
+            // Coerce any old flags (checked, done, isDone) into `completed`
+            completed: !!(t.completed || t.checked || t.done || t.isDone || false)
           }));
         } catch (e) {
           console.warn('Failed to parse stored tasks:', e);
-          return [];
+          return seedTasks();
         }
       }
 
-      function setTodayTasks(tasks) {
+      function saveTasks(tasks) {
         try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+          localStorage.setItem(LS_KEY, JSON.stringify(tasks));
         } catch (e) {
           console.warn('Failed to store tasks:', e);
         }
@@ -497,7 +534,7 @@
         }
 
         function saveTasksToStorage() {
-          setTodayTasks(tasks);
+          saveTasks(tasks);
         }
 
         function toggleComplete(taskId) {
@@ -565,7 +602,7 @@
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.3c — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.3d — active:${activeCount} done:${doneCount}`;
           }
         }
 
@@ -592,41 +629,8 @@
 
         // Load tasks from storage on init
         function loadTasksFromStorage() {
-          const storedTasks = getTodayTasks();
-          
-          if (storedTasks.length === 0) {
-            // Create seed data if no stored tasks
-            tasks = [
-              {
-                id: generateId(),
-                title: 'Deep Work: "Main project"',
-                tag: '2/4 subtasks • focus',
-                minutes: 25,
-                completed: false,
-                createdAt: new Date().toISOString()
-              },
-              {
-                id: generateId(),
-                title: 'Reply to messages',
-                tag: 'No subtasks',
-                minutes: undefined,
-                completed: false,
-                createdAt: new Date().toISOString()
-              },
-              {
-                id: generateId(),
-                title: 'Walk outside',
-                tag: 'Wellbeing',
-                minutes: 15,
-                completed: false,
-                createdAt: new Date().toISOString()
-              }
-            ];
-            saveTasksToStorage();
-          } else {
-            tasks = storedTasks;
-          }
-
+          // Use the migration-friendly loadTasks function
+          tasks = loadTasks();
           renderTasks();
         }
 
@@ -634,6 +638,8 @@
         window.toggleComplete = toggleComplete;
         window.addTask = addTask;
         window.saveTasksToStorage = saveTasksToStorage;
+        window.loadTasks = loadTasks;
+        window.saveTasks = saveTasks;
 
         // Initialize
         loadTasksFromStorage();
