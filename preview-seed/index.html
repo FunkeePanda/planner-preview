@@ -135,6 +135,29 @@
         z-index:10001; opacity:0; transition:opacity .3s ease;
       }
       .toast.show{ opacity:1; }
+
+      .task--done{
+        opacity:0.4;
+      }
+      .task--done .task-title{
+        text-decoration:line-through;
+      }
+      .task--done button{
+        opacity:0;
+        pointer-events:none;
+      }
+
+      .sr-only{
+        position:absolute;
+        width:1px;
+        height:1px;
+        padding:0;
+        margin:-1px;
+        overflow:hidden;
+        clip:rect(0,0,0,0);
+        white-space:nowrap;
+        border:0;
+      }
     </style>
   </head>
   <body>
@@ -143,14 +166,14 @@
     <main>
       <section id="tab-today">
         <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.1</h2>
-          <div class="muted" style="margin-bottom:14px">Interactive task creation.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.2a</h2>
+          <div class="muted" style="margin-bottom:14px">Interactive task creation + completion toggles.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <div style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)">
-              <input type="checkbox" aria-label="Complete task" style="width:20px;height:20px">
+              <input type="checkbox" data-role="toggle-done" aria-label="Complete task" style="width:20px;height:20px">
               <div style="flex:1">
-                <div style="font-weight:600">Deep Work: "Main project"</div>
+                <div class="task-title" style="font-weight:600">Deep Work: "Main project"</div>
                 <div class="muted" style="font-size:13px">2/4 subtasks • focus</div>
               </div>
               <span style="font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08)">25m</span>
@@ -158,9 +181,9 @@
             </div>
 
             <div style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)">
-              <input type="checkbox" style="width:20px;height:20px">
+              <input type="checkbox" data-role="toggle-done" style="width:20px;height:20px">
               <div style="flex:1">
-                <div style="font-weight:600">Reply to messages</div>
+                <div class="task-title" style="font-weight:600">Reply to messages</div>
                 <div class="muted" style="font-size:13px">No subtasks</div>
               </div>
               <span style="font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08)">×10</span>
@@ -168,9 +191,9 @@
             </div>
 
             <div style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)">
-              <input type="checkbox" style="width:20px;height:20px">
+              <input type="checkbox" data-role="toggle-done" style="width:20px;height:20px">
               <div style="flex:1">
-                <div style="font-weight:600">Walk outside</div>
+                <div class="task-title" style="font-weight:600">Walk outside</div>
                 <div class="muted" style="font-size:13px">Wellbeing</div>
               </div>
               <span style="font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08)">15m</span>
@@ -240,9 +263,12 @@
 
     <button class="fab" aria-label="Add task">+ Add task</button>
 
+    <!-- Accessibility announcements -->
+    <div id="task-announcements" class="sr-only" aria-live="polite"></div>
+
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.1
+      build: STEP-1.2a
     </div>
 
     <script>
@@ -298,9 +324,9 @@
         const durationPill = duration ? `<span style="font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08)">${duration}m</span>` : '';
         
         card.innerHTML = `
-          <input type="checkbox" aria-label="Complete task" style="width:20px;height:20px">
+          <input type="checkbox" data-role="toggle-done" aria-label="Complete task" style="width:20px;height:20px">
           <div style="flex:1">
-            <div style="font-weight:600">${title}</div>
+            <div class="task-title" style="font-weight:600">${title}</div>
             ${tagLine}
           </div>
           ${durationPill}
@@ -372,6 +398,37 @@
 
         // Expose for future use (optional)
         window.__modal = { show: showModal, hide: hideModal };
+      })();
+
+      // Task completion toggle
+      (function () {
+        const todayList = document.getElementById('today-list');
+        const announcements = document.getElementById('task-announcements');
+
+        function announce(text) {
+          announcements.textContent = text;
+        }
+
+        // Delegate checkbox changes
+        todayList?.addEventListener('change', (e) => {
+          const checkbox = e.target;
+          if (checkbox.type === 'checkbox' && checkbox.dataset.role === 'toggle-done') {
+            const card = checkbox.closest('div[style*="display:flex"]');
+            const isChecked = checkbox.checked;
+            
+            if (card) {
+              if (isChecked) {
+                card.classList.add('task--done');
+                checkbox.setAttribute('aria-checked', 'true');
+                announce('Task completed');
+              } else {
+                card.classList.remove('task--done');
+                checkbox.setAttribute('aria-checked', 'false');
+                announce('Task active');
+              }
+            }
+          }
+        });
       })();
     </script>
   </body>
