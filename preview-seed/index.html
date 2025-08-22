@@ -1,10 +1,5 @@
 <!doctype html>
 <html>
-<!-- cache-bust-start -->
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-    <meta http-equiv="Pragma" content="no-cache" />
-    <meta http-equiv="Expires" content="0" />
-<!-- cache-bust-end -->
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -19,6 +14,8 @@
       main{max-width:720px;margin:16px auto;padding:16px}
       .card{background:var(--glass);border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:16px 18px;box-shadow:0 6px 28px rgba(0,0,0,.25)}
       .muted{opacity:.8}
+
+      /* FAB */
       .fab{
         position:fixed;
         right:max(16px, env(safe-area-inset-right) + 12px);
@@ -32,27 +29,24 @@
         z-index:9999;
       }
       .fab:active{ transform: translateY(1px); }
+
       @media (min-width:768px){ main{margin:24px auto;padding:24px} .card{padding:22px 24px} }
     </style>
   </head>
   <body>
-<!-- cache-bust-start -->
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-    <meta http-equiv="Pragma" content="no-cache" />
-    <meta http-equiv="Expires" content="0" />
-<!-- cache-bust-end -->
     <header>
       <div class="bar">
         <div class="title">Planner App</div>
       </div>
     </header>
+
     <main>
       <div class="card">
-        <h2 style="margin:0 0 10px 0">Today</h2>
-        <div class="muted" style="margin-bottom:14px">A simple preview of how tasks will look.</div>
+        <h2 style="margin:0 0 10px 0">Today — step 0.3</h2>
+        <div class="muted" style="margin-bottom:14px">Static preview of tasks.</div>
 
         <ul style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
-          <!-- Task row 1 -->
+          <!-- Task 1 -->
           <li style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)">
             <input type="checkbox" aria-label="Complete task" style="width:20px;height:20px">
             <div style="flex:1">
@@ -63,7 +57,7 @@
             <button style="margin-left:8px;padding:6px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff">Start</button>
           </li>
 
-          <!-- Task row 2 -->
+          <!-- Task 2 -->
           <li style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)">
             <input type="checkbox" style="width:20px;height:20px">
             <div style="flex:1">
@@ -74,7 +68,7 @@
             <button style="margin-left:8px;padding:6px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff">Start</button>
           </li>
 
-          <!-- Task row 3 -->
+          <!-- Task 3 -->
           <li style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)">
             <input type="checkbox" style="width:20px;height:20px">
             <div style="flex:1">
@@ -87,7 +81,10 @@
         </ul>
       </div>
     </main>
+
+    <!-- Floating Add Task button -->
     <button class="fab" aria-label="Add task">+ Add task</button>
+
+    <!-- build-stamp: will be replaced by CI cache-bust -->
   </body>
 </html>
-<!-- cache-bust: 2025-08-22T15:31:09.233Z -->
