@@ -24,12 +24,12 @@
       header{position:sticky;top:0;backdrop-filter:saturate(140%) blur(8px);background:linear-gradient(160deg,rgba(255,255,255,.08),rgba(255,255,255,.04));border-bottom:1px solid var(--border-light)}
       .bar{height:60px;max-width:960px;margin:0 auto;display:flex;align-items:center;gap:12px;padding:0 16px}
       .title{font-weight:700;letter-spacing:.2px}
-      main{max-width:720px;margin:16px auto;padding:16px}
+      main{max-width:720px;margin:16px auto;padding:16px;padding-bottom:calc(120px + env(safe-area-inset-bottom))}
       .card{background:var(--glass);border:1px solid var(--border-light);border-radius:var(--radius-md);padding:16px 18px;box-shadow:var(--shadow-card)}
       .muted{opacity:.8}
 
       .btn{
-        height:44px; padding:0 20px; min-width:80px;
+        height:44px; min-height:44px; padding:0 20px; min-width:80px;
         border-radius:var(--radius-pill); border:1px solid var(--border-medium);
         background:linear-gradient(160deg,rgba(255,255,255,.18),rgba(255,255,255,.10));
         backdrop-filter:saturate(140%) blur(8px);
@@ -39,12 +39,13 @@
       }
       .btn:active{ transform: translateY(1px); }
       .btn:hover{ background:linear-gradient(160deg,rgba(255,255,255,.22),rgba(255,255,255,.14)); }
+      .btn:focus-visible{ outline:2px solid rgba(255,255,255,.9); outline-offset:2px; border-radius:3px; }
 
       .fab{
         position:fixed;
         right:max(16px, env(safe-area-inset-right) + 12px);
         bottom:max(16px, env(safe-area-inset-bottom) + 12px);
-        height:54px; min-width:54px; padding:0 16px;
+        height:54px; min-height:44px; min-width:54px; padding:0 16px;
         border-radius:var(--radius-pill); border:1px solid var(--border-medium);
         background:linear-gradient(160deg,rgba(255,255,255,.18),rgba(255,255,255,.10));
         backdrop-filter:saturate(140%) blur(8px);
@@ -53,6 +54,7 @@
         z-index:9999;
       }
       .fab:active{ transform: translateY(1px); }
+      .fab:focus-visible{ outline:2px solid rgba(255,255,255,.9); outline-offset:2px; border-radius:3px; }
 
       .modal-backdrop{
         position:fixed; top:0; left:0; right:0; bottom:0;
@@ -76,7 +78,9 @@
       .modal-actions{ display:flex; gap:12px; justify-content:flex-end; margin-top:20px; }
 
       .tab-bar{
-        position:fixed; bottom:0; left:0; right:0;
+        position:fixed; bottom:0; 
+        left:max(0px, env(safe-area-inset-left)); 
+        right:max(0px, env(safe-area-inset-right));
         padding:max(8px, env(safe-area-inset-bottom) + 8px) 16px 8px;
         background:linear-gradient(160deg,rgba(255,255,255,.12),rgba(255,255,255,.08));
         backdrop-filter:saturate(140%) blur(8px);
@@ -85,7 +89,7 @@
         z-index:9998;
       }
       .tab-btn{
-        flex:1; max-width:120px; height:48px; padding:8px;
+        flex:1; max-width:120px; height:48px; min-height:44px; min-width:44px; padding:8px;
         border:none; background:transparent; color:var(--text-muted);
         border-radius:var(--radius-sm); font-size:12px; font-weight:500;
         display:flex; flex-direction:column; align-items:center; justify-content:center;
@@ -96,6 +100,7 @@
         background:rgba(255,255,255,.1);
       }
       .tab-btn:active{ transform:scale(.95); }
+      .tab-btn:focus-visible{ outline:2px solid rgba(255,255,255,.9); outline-offset:2px; border-radius:3px; }
 
       .day-grid{
         display:grid; grid-template-columns:repeat(7,1fr); gap:8px; margin-top:12px;
@@ -209,14 +214,22 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-0.5b
+      build: STEP-0.5c
     </div>
 
     <script>
+      // Placeholder for future native haptics
+      function tryHaptic(type) {
+        console.log(`Haptic feedback: ${type}`);
+      }
+
       // Simple tab switching
       document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', () => {
           const targetTab = btn.dataset.tab;
+          
+          // Haptic feedback
+          tryHaptic('tab');
           
           // Hide all sections
           document.querySelectorAll('section[id^="tab-"]').forEach(section => {
