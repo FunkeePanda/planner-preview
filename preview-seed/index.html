@@ -193,24 +193,25 @@
     <main>
       <section id="tab-today">
         <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.3e</h2>
-          <div class="muted" style="margin-bottom:14px">React-style state management patterns.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.3f</h2>
+          <div class="muted" style="margin-bottom:14px">Fully controlled checkboxes with React-style rendering.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
           </div>
 
-                      <section id="today-completed" aria-label="Completed tasks" style="margin-top:20px">
+                      <!-- Completed bucket (like React section with conditional Clear button) -->
+            <section id="today-completed" aria-label="Completed" style="margin-top:16px">
               <header class="row between small muted" style="margin-bottom:12px">
-                <div>Completed (<span id="completed-count">0</span>)</div>
-                <button id="clear-completed" class="link-btn" aria-label="Reset all tasks to incomplete">Clear</button>
+                <span>Completed (<span id="completed-count">0</span>)</span>
+                <button id="clear-completed" class="link-btn" style="display:none">Clear</button>
               </header>
               <div id="completed-list" style="display:grid;gap:10px"></div>
             </section>
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.3e — active:0 done:0
+              build: STEP-1.3f — active:0 done:0
             </footer>
         </div>
       </section>
@@ -280,7 +281,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.3e
+      build: STEP-1.3f
     </div>
 
     <script>
@@ -404,10 +405,12 @@
         const tagLine = task.tag ? `<div class="muted" style="font-size:13px">${task.tag}</div>` : '';
         const durationPill = task.minutes ? `<span style="font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08)">${task.minutes}m</span>` : '';
         
+        // Controlled checkbox - only reads task.completed, no other state
         card.innerHTML = `
-          <input type="checkbox" data-role="toggle-done" 
-                 aria-label="Mark ${task.title} ${task.completed ? 'incomplete' : 'complete'}"
-                 ${task.completed ? 'checked' : ''}>
+          <input type="checkbox" 
+                 data-role="toggle-done" 
+                 ${task.completed ? 'checked' : ''}
+                 aria-label="Mark ${task.title} ${task.completed ? 'incomplete' : 'complete'}">
           <div style="flex:1">
             <div class="task-title" style="font-weight:600">${task.title}</div>
             ${tagLine}
@@ -551,6 +554,12 @@
         function updateCompletedCount() {
           const doneCount = getDone().length;
           completedCount.textContent = doneCount;
+          
+          // Show/hide Clear button like React: {done.length > 0 && <button onClick={clearCompleted}>Clear</button>}
+          const clearBtn = document.getElementById('clear-completed');
+          if (clearBtn) {
+            clearBtn.style.display = doneCount > 0 ? 'block' : 'none';
+          }
         }
 
         // Single toggle function (matches your React pattern exactly)
@@ -589,18 +598,19 @@
           todayList.innerHTML = '';
           completedList.innerHTML = '';
 
-          // Render active tasks
+          // Render active tasks (like active.map(task => <TaskRow key={task.id} task={task} toggleComplete={toggleComplete} />))
           active.forEach(task => {
             const card = createTaskCard(task);
             todayList.appendChild(card);
           });
 
-          // Render completed tasks  
+          // Render completed tasks (like done.map(task => <TaskRow key={task.id} task={task} toggleComplete={toggleComplete} muted />))
           done.forEach(task => {
             const card = createTaskCard(task);
             completedList.appendChild(card);
           });
 
+          // Update completed section header (like <span>Completed ({done.length})</span>)
           updateCompletedCount();
           updateDebugFooter(active.length, done.length);
         }
@@ -608,7 +618,7 @@
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.3e — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.3f — active:${activeCount} done:${doneCount}`;
           }
         }
 
@@ -620,7 +630,7 @@
             const taskId = card?.dataset.taskId;
             
             if (taskId) {
-              // Prevent default and control the checkbox state
+              // Prevent default - checkbox is fully controlled by task.completed
               e.preventDefault();
               toggleComplete(taskId);
             }
