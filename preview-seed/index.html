@@ -210,15 +210,15 @@
     <main>
       <section id="tab-today">
         <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.4</h2>
-          <div class="muted" style="margin-bottom:14px">Lightweight per-task timers with auto-completion.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.4.1</h2>
+          <div class="muted" style="margin-bottom:14px">Fixed checkbox completion flow + added test IDs.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
           </div>
 
                       <!-- Completed bucket (like React section with conditional Clear button) -->
-            <section id="today-completed" aria-label="Completed" style="margin-top:16px">
+            <section id="today-completed" aria-label="Completed" style="margin-top:16px" data-testid="completed-section">
               <header class="row between small muted" style="margin-bottom:12px">
                 <span>Completed (<span id="completed-count">0</span>)</span>
                 <button id="clear-completed" class="link-btn" style="display:none">Clear</button>
@@ -228,7 +228,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.4 — active:0 done:0
+              build: STEP-1.4.1 — active:0 done:0
             </footer>
         </div>
       </section>
@@ -298,7 +298,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.4
+      build: STEP-1.4.1
     </div>
 
     <script>
@@ -455,6 +455,7 @@
         const card = document.createElement('div');
         card.style.cssText = 'display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)';
         card.dataset.taskId = task.id;
+        card.dataset.testid = `task-row-${task.id}`;
         
         const tagLine = task.tag ? `<div class="muted" style="font-size:13px">${task.tag}</div>` : '';
         
@@ -669,6 +670,7 @@
             // Announce change
             const task = next.find(t => t.id === id);
             if (task) {
+              console.log('DevLog: Task completion toggled:', task.title, '→', task.completed);
               announce(task.completed ? 'Task completed' : 'Task active');
             }
             
@@ -843,7 +845,7 @@
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.4 — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.4.1 — active:${activeCount} done:${doneCount}`;
           }
         }
 
@@ -855,8 +857,7 @@
             const taskId = card?.dataset.taskId;
             
             if (taskId) {
-              // Prevent default - checkbox is fully controlled by task.completed
-              e.preventDefault();
+              // Don't prevent default - let checkbox update naturally, then sync state
               toggleComplete(taskId);
             }
           }
@@ -917,6 +918,32 @@
           renderTasks();
         }
 
+        // Test helper for regression verification
+        window.testCheckboxFlow = function() {
+          console.log('🧪 Testing checkbox completion flow...');
+          const activeCount = getActive().length;
+          const doneCount = getDone().length;
+          console.log('Before:', { active: activeCount, done: doneCount });
+          
+          // Find first active task
+          const firstActive = getActive()[0];
+          if (firstActive) {
+            console.log('Toggling task:', firstActive.title);
+            toggleComplete(firstActive.id);
+            
+            setTimeout(() => {
+              const newActiveCount = getActive().length;
+              const newDoneCount = getDone().length;
+              console.log('After:', { active: newActiveCount, done: newDoneCount });
+              
+              const success = newActiveCount === activeCount - 1 && newDoneCount === doneCount + 1;
+              console.log(success ? '✅ Test PASSED' : '❌ Test FAILED');
+            }, 100);
+          } else {
+            console.log('No active tasks to test');
+          }
+        };
+
         // Expose functions globally
         window.toggleComplete = toggleComplete;
         window.addTask = addTask;
@@ -929,6 +956,11 @@
 
         // Initialize
         loadTasksFromStorage();
+        
+        // Development guardrail
+        console.log('🔧 DevLog: Checkbox completion system initialized');
+        console.log('📋 Run testCheckboxFlow() to verify checkbox behavior');
+        console.log('📊 Debug footer shows live active/done counts');
       })();
     </script>
   </body>
