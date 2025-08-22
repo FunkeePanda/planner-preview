@@ -5,29 +5,75 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Planner App</title>
     <style>
-      :root { --bg1:#6c63ff; --bg2:#7a3cf0; --glass: rgba(255,255,255,0.08); }
+      :root { 
+        --bg1:#6c63ff; --bg2:#7a3cf0; 
+        --glass: rgba(255,255,255,0.08); 
+        --glass-strong: rgba(255,255,255,0.12);
+        --border-light: rgba(255,255,255,.12);
+        --border-medium: rgba(255,255,255,.25);
+        --text-primary: #fff;
+        --text-muted: rgba(255,255,255,.8);
+        --shadow-card: 0 6px 28px rgba(0,0,0,.25);
+        --shadow-fab: 0 10px 28px rgba(0,0,0,.35);
+        --radius-sm: 10px;
+        --radius-md: 16px;
+        --radius-pill: 999px;
+      }
       *{box-sizing:border-box} html,body{height:100%}
-      body{margin:0;font:16px system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial;background:linear-gradient(160deg,var(--bg1),var(--bg2)) fixed;color:#fff}
-      header{position:sticky;top:0;backdrop-filter:saturate(140%) blur(8px);background:linear-gradient(160deg,rgba(255,255,255,.08),rgba(255,255,255,.04));border-bottom:1px solid rgba(255,255,255,.12)}
+      body{margin:0;font:16px system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial;background:linear-gradient(160deg,var(--bg1),var(--bg2)) fixed;color:var(--text-primary)}
+      header{position:sticky;top:0;backdrop-filter:saturate(140%) blur(8px);background:linear-gradient(160deg,rgba(255,255,255,.08),rgba(255,255,255,.04));border-bottom:1px solid var(--border-light)}
       .bar{height:60px;max-width:960px;margin:0 auto;display:flex;align-items:center;gap:12px;padding:0 16px}
       .title{font-weight:700;letter-spacing:.2px}
       main{max-width:720px;margin:16px auto;padding:16px}
-      .card{background:var(--glass);border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:16px 18px;box-shadow:0 6px 28px rgba(0,0,0,.25)}
+      .card{background:var(--glass);border:1px solid var(--border-light);border-radius:var(--radius-md);padding:16px 18px;box-shadow:var(--shadow-card)}
       .muted{opacity:.8}
+
+      .btn{
+        height:44px; padding:0 20px; min-width:80px;
+        border-radius:var(--radius-pill); border:1px solid var(--border-medium);
+        background:linear-gradient(160deg,rgba(255,255,255,.18),rgba(255,255,255,.10));
+        backdrop-filter:saturate(140%) blur(8px);
+        color:var(--text-primary); font-weight:600; font-size:14px;
+        display:inline-flex; align-items:center; justify-content:center;
+        cursor:pointer; transition:transform .1s ease;
+      }
+      .btn:active{ transform: translateY(1px); }
+      .btn:hover{ background:linear-gradient(160deg,rgba(255,255,255,.22),rgba(255,255,255,.14)); }
 
       .fab{
         position:fixed;
         right:max(16px, env(safe-area-inset-right) + 12px);
         bottom:max(16px, env(safe-area-inset-bottom) + 12px);
         height:54px; min-width:54px; padding:0 16px;
-        border-radius:999px; border:1px solid rgba(255,255,255,.25);
+        border-radius:var(--radius-pill); border:1px solid var(--border-medium);
         background:linear-gradient(160deg,rgba(255,255,255,.18),rgba(255,255,255,.10));
         backdrop-filter:saturate(140%) blur(8px);
-        color:#fff; font-weight:600;
-        box-shadow:0 10px 28px rgba(0,0,0,.35);
+        color:var(--text-primary); font-weight:600;
+        box-shadow:var(--shadow-fab);
         z-index:9999;
       }
       .fab:active{ transform: translateY(1px); }
+
+      .modal-backdrop{
+        position:fixed; top:0; left:0; right:0; bottom:0;
+        background:rgba(0,0,0,.6); backdrop-filter:blur(4px);
+        display:flex; align-items:center; justify-content:center;
+        z-index:10000;
+      }
+      .modal{
+        background:var(--glass-strong); border:1px solid var(--border-light);
+        border-radius:var(--radius-md); padding:24px; min-width:320px; max-width:90vw;
+        box-shadow:0 20px 60px rgba(0,0,0,.4);
+      }
+      .modal h3{ margin:0 0 16px 0; font-size:18px; }
+      .modal input, .modal textarea{
+        width:100%; padding:12px; margin-bottom:12px;
+        border:1px solid var(--border-light); border-radius:var(--radius-sm);
+        background:rgba(255,255,255,.08); color:var(--text-primary);
+        font:inherit;
+      }
+      .modal input::placeholder, .modal textarea::placeholder{ color:var(--text-muted); }
+      .modal-actions{ display:flex; gap:12px; justify-content:flex-end; margin-top:20px; }
     </style>
   </head>
   <body>
@@ -72,11 +118,23 @@
       </div>
     </main>
 
+    <div id="modal-backdrop" class="modal-backdrop" hidden>
+      <div class="modal">
+        <h3>New Task (stub)</h3>
+        <input type="text" placeholder="Task title" />
+        <textarea placeholder="Notes (optional)" rows="3"></textarea>
+        <div class="modal-actions">
+          <button class="btn">Cancel</button>
+          <button class="btn">Save</button>
+        </div>
+      </div>
+    </div>
+
     <button class="fab" aria-label="Add task">+ Add task</button>
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-0.3
+      build: STEP-0.5a
     </div>
   </body>
 </html>
