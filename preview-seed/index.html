@@ -615,7 +615,7 @@
           tasks = next;
           
           // Auto-save and re-render on state change
-          saveTasks(next);
+          saveTasks(next);  // Immediate save for user actions
           renderTasks();
         }
 
@@ -671,6 +671,7 @@
             const task = next.find(t => t.id === id);
             if (task) {
               console.log('DevLog: Task completion toggled:', task.title, '→', task.completed);
+              console.log('DevLog: State after toggle - active:', next.filter(t => !t.completed).length, 'done:', next.filter(t => t.completed).length);
               announce(task.completed ? 'Task completed' : 'Task active');
             }
             
@@ -820,6 +821,8 @@
           // Derive lists from state (like useMemo)
           const active = getActive();
           const done = getDone();
+
+          console.log('DevLog: Rendering tasks - active:', active.length, 'done:', done.length);
 
           // Clear existing DOM
           todayList.innerHTML = '';
