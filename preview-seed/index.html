@@ -193,8 +193,8 @@
     <main>
       <section id="tab-today">
         <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.3f</h2>
-          <div class="muted" style="margin-bottom:14px">Fully controlled checkboxes with React-style rendering.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.3g</h2>
+          <div class="muted" style="margin-bottom:14px">Fixed checkbox event handling for proper completion toggle.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -211,7 +211,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.3f — active:0 done:0
+              build: STEP-1.3g — active:0 done:0
             </footer>
         </div>
       </section>
@@ -281,7 +281,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.3f
+      build: STEP-1.3g
     </div>
 
     <script>
@@ -618,7 +618,7 @@
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.3f — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.3g — active:${activeCount} done:${doneCount}`;
           }
         }
 
@@ -638,8 +638,8 @@
         }
 
         // Event listeners
-        todayList?.addEventListener('click', handleCheckboxChange);
-        completedList?.addEventListener('click', handleCheckboxChange);
+        todayList?.addEventListener('change', handleCheckboxChange);
+        completedList?.addEventListener('change', handleCheckboxChange);
 
         clearBtn?.addEventListener('click', clearCompleted);
 
