@@ -117,6 +117,24 @@
         padding:12px 0; border-bottom:1px solid rgba(255,255,255,.08);
       }
       .settings-row:last-child{ border-bottom:none; }
+
+      .shake{
+        animation: shake 0.3s ease-in-out;
+      }
+      @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-5px); }
+        75% { transform: translateX(5px); }
+      }
+
+      .toast{
+        position:fixed; left:50%; bottom:calc(80px + env(safe-area-inset-bottom));
+        transform:translateX(-50%); padding:12px 20px;
+        background:rgba(0,0,0,.8); color:var(--text-primary);
+        border-radius:var(--radius-pill); font-size:14px; font-weight:500;
+        z-index:10001; opacity:0; transition:opacity .3s ease;
+      }
+      .toast.show{ opacity:1; }
     </style>
   </head>
   <body>
@@ -125,11 +143,11 @@
     <main>
       <section id="tab-today">
         <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 0.5b</h2>
-          <div class="muted" style="margin-bottom:14px">Static preview of tasks.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.1</h2>
+          <div class="muted" style="margin-bottom:14px">Interactive task creation.</div>
 
-          <ul style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
-            <li style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)">
+          <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
+            <div style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)">
               <input type="checkbox" aria-label="Complete task" style="width:20px;height:20px">
               <div style="flex:1">
                 <div style="font-weight:600">Deep Work: "Main project"</div>
@@ -137,9 +155,9 @@
               </div>
               <span style="font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08)">25m</span>
               <button style="margin-left:8px;padding:6px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff">Start</button>
-            </li>
+            </div>
 
-            <li style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)">
+            <div style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)">
               <input type="checkbox" style="width:20px;height:20px">
               <div style="flex:1">
                 <div style="font-weight:600">Reply to messages</div>
@@ -147,9 +165,9 @@
               </div>
               <span style="font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08)">×10</span>
               <button style="margin-left:8px;padding:6px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff">Start</button>
-            </li>
+            </div>
 
-            <li style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)">
+            <div style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)">
               <input type="checkbox" style="width:20px;height:20px">
               <div style="flex:1">
                 <div style="font-weight:600">Walk outside</div>
@@ -157,8 +175,8 @@
               </div>
               <span style="font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08)">15m</span>
               <button style="margin-left:8px;padding:6px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff">Start</button>
-            </li>
-          </ul>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -195,9 +213,18 @@
 
     <div id="modal-backdrop" class="modal-backdrop" hidden>
       <div class="modal">
-        <h3>New Task (stub)</h3>
-        <input type="text" placeholder="Task title" />
-        <textarea placeholder="Notes (optional)" rows="3"></textarea>
+        <h3>New Task</h3>
+        <form id="task-form">
+          <input id="task-title" type="text" placeholder="Task name" required />
+          <select id="task-duration">
+            <option value="">None</option>
+            <option value="5">5 minutes</option>
+            <option value="15">15 minutes</option>
+            <option value="25">25 minutes</option>
+            <option value="45">45 minutes</option>
+          </select>
+          <input id="task-tag" type="text" placeholder="Tag or area (optional)" />
+        </form>
         <div class="modal-actions">
           <button id="modal-cancel" class="btn">Cancel</button>
           <button id="modal-save" class="btn">Save</button>
@@ -215,7 +242,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-0.5c-fix
+      build: STEP-1.1
     </div>
 
     <script>
@@ -248,26 +275,99 @@
         });
       });
 
+      // Toast helper
+      function createToast(text) {
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.textContent = text;
+        document.body.appendChild(toast);
+        
+        setTimeout(() => toast.classList.add('show'), 10);
+        setTimeout(() => {
+          toast.classList.remove('show');
+          setTimeout(() => document.body.removeChild(toast), 300);
+        }, 1500);
+      }
+
+      // Task creation helper
+      function createTaskCard(title, duration, tag) {
+        const card = document.createElement('div');
+        card.style.cssText = 'display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)';
+        
+        const tagLine = tag ? `<div class="muted" style="font-size:13px">${tag}</div>` : '';
+        const durationPill = duration ? `<span style="font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08)">${duration}m</span>` : '';
+        
+        card.innerHTML = `
+          <input type="checkbox" aria-label="Complete task" style="width:20px;height:20px">
+          <div style="flex:1">
+            <div style="font-weight:600">${title}</div>
+            ${tagLine}
+          </div>
+          ${durationPill}
+          <button style="margin-left:8px;padding:6px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff">Start</button>
+        `;
+        
+        return card;
+      }
+
       // Modal management
       (function () {
         const backdrop = document.getElementById('modal-backdrop');
         const cancelBtn = document.getElementById('modal-cancel');
-        const saveBtn   = document.getElementById('modal-save');
+        const saveBtn = document.getElementById('modal-save');
+        const fab = document.querySelector('.fab');
+        const form = document.getElementById('task-form');
+        const titleInput = document.getElementById('task-title');
+        const durationSelect = document.getElementById('task-duration');
+        const tagInput = document.getElementById('task-tag');
+        const todayList = document.getElementById('today-list');
 
-        function hideModal(){ backdrop.setAttribute('hidden',''); }
-        function showModal(){ backdrop.removeAttribute('hidden'); } // keep for later
+        function hideModal() { 
+          backdrop.setAttribute('hidden',''); 
+          form.reset();
+          titleInput.classList.remove('shake');
+        }
+        
+        function showModal() { 
+          backdrop.removeAttribute('hidden'); 
+          titleInput.focus();
+        }
 
         // Ensure hidden on load
         hideModal();
 
-        // Close on Cancel, Save, clicking the dim area, or Esc
+        // FAB opens modal
+        fab?.addEventListener('click', showModal);
+
+        // Close on Cancel, clicking the dim area, or Esc
         cancelBtn?.addEventListener('click', hideModal);
-        saveBtn?.addEventListener('click', hideModal);
         backdrop?.addEventListener('click', (e) => {
           if (e.target === backdrop) hideModal();
         });
         document.addEventListener('keydown', (e) => {
           if (e.key === 'Escape') hideModal();
+        });
+
+        // Save task
+        saveBtn?.addEventListener('click', () => {
+          const title = titleInput.value.trim();
+          const duration = durationSelect.value;
+          const tag = tagInput.value.trim();
+
+          if (!title) {
+            titleInput.classList.add('shake');
+            titleInput.focus();
+            setTimeout(() => titleInput.classList.remove('shake'), 300);
+            return;
+          }
+
+          // Create and add task card
+          const taskCard = createTaskCard(title, duration, tag);
+          todayList.insertBefore(taskCard, todayList.firstChild);
+
+          // Close modal and show toast
+          hideModal();
+          createToast('Task added');
         });
 
         // Expose for future use (optional)
