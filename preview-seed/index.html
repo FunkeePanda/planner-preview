@@ -77,7 +77,7 @@
         justify-content: center;
         background: linear-gradient(135deg, rgba(255, 165, 0, 0.95), rgba(255, 140, 0, 0.95));
         border-radius: 0 12px 12px 0;
-        /* No z-index - let natural document order work */
+        z-index: 1; /* Behind content */
         opacity: 1;
         transform: translateX(0);
         /* Simple border and shadow */
@@ -95,13 +95,14 @@
         border: 1px solid rgba(255,255,255,.12);
         border-radius: 12px;
         transition: transform 0.25s cubic-bezier(0.2, 0.0, 0.2, 1);
-        position: relative;
-        /* No z-index - let natural document order work */
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 2; /* On top of actions */
         /* Prevent content from becoming transparent during swipe */
         will-change: transform;
         backface-visibility: hidden;
-        /* Ensure card covers the button area completely */
-        width: 100%;
         margin: 0;
       }
       
@@ -323,8 +324,8 @@
     <main>
       <section id="tab-today">
         <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.10-layering</h2>
-          <div class="muted" style="margin-bottom:14px">Fixed DOM order and z-index - edit button now properly behind task card.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.11-absolute</h2>
+          <div class="muted" style="margin-bottom:14px">Fixed positioning context - both elements absolute with proper z-index layering.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -341,7 +342,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.10-layering — active:0 done:0
+              build: STEP-1.11-absolute — active:0 done:0
             </footer>
         </div>
       </section>
@@ -433,7 +434,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.10-layering
+      build: STEP-1.11-absolute
     </div>
 
     <script>
@@ -1406,7 +1407,7 @@
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.10-layering — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.11-absolute — active:${activeCount} done:${doneCount}`;
           }
         }
 
@@ -1575,42 +1576,48 @@
           }
         };
 
-        // Test DOM layering order
-        window.testDOMLayering = function() {
-          console.log('🧪 Testing DOM layering order...');
+        // Test absolute positioning layering
+        window.testAbsoluteLayering = function() {
+          console.log('🧪 Testing absolute positioning layering...');
           const containers = document.querySelectorAll('.task-swipe-container');
           if (containers.length > 0) {
             const firstContainer = containers[0];
-            const children = Array.from(firstContainer.children);
-            
-            console.log('DOM order (should be actions first, then content):');
-            children.forEach((child, index) => {
-              console.log(`${index + 1}. ${child.className} (${child.tagName})`);
-            });
-            
             const taskContent = firstContainer.querySelector('.task-content');
             const taskActions = firstContainer.querySelector('.task-actions');
             
             if (taskActions && taskContent) {
-              const actionsIndex = children.indexOf(taskActions);
-              const contentIndex = children.indexOf(taskContent);
+              console.log('Position analysis:');
+              console.log('- Actions position:', getComputedStyle(taskActions).position);
+              console.log('- Content position:', getComputedStyle(taskContent).position);
+              console.log('- Actions z-index:', getComputedStyle(taskActions).zIndex);
+              console.log('- Content z-index:', getComputedStyle(taskContent).zIndex);
               
-              console.log('Layer order analysis:');
-              console.log('- Actions index:', actionsIndex, '(should be 0 - first/behind)');
-              console.log('- Content index:', contentIndex, '(should be 1 - second/on top)');
+              const actionsZ = parseInt(getComputedStyle(taskActions).zIndex) || 0;
+              const contentZ = parseInt(getComputedStyle(taskContent).zIndex) || 0;
               
-              const isCorrectOrder = actionsIndex < contentIndex;
-              console.log('Correct layering:', isCorrectOrder ? '✅ YES' : '❌ NO');
+              console.log('Z-index comparison:');
+              console.log('- Actions z-index:', actionsZ, '(should be lower)');
+              console.log('- Content z-index:', contentZ, '(should be higher)');
+              
+              const correctZIndex = contentZ > actionsZ;
+              console.log('Correct z-index layering:', correctZIndex ? '✅ YES' : '❌ NO');
               
               // Test visual layering
               console.log('Testing swipe reveal...');
               firstContainer.classList.add('swiped');
               
               setTimeout(() => {
-                console.log('Button should now be visible behind the slid card');
+                const contentRect = taskContent.getBoundingClientRect();
+                const actionsRect = taskActions.getBoundingClientRect();
+                
+                console.log('Visual positioning:');
+                console.log('- Content left:', contentRect.left);
+                console.log('- Actions left:', actionsRect.left);
+                console.log('- Actions visible:', actionsRect.width > 0 && actionsRect.right > contentRect.right);
+                
                 setTimeout(() => {
                   firstContainer.classList.remove('swiped');
-                  console.log('✅ DOM layering test complete');
+                  console.log('✅ Absolute layering test complete');
                 }, 1000);
               }, 300);
             }
