@@ -163,17 +163,9 @@
         box-shadow: -2px 0 12px rgba(255, 165, 0, 0.5);
       }
       
-      /* Hide edit button for completed tasks */
+      /* Completely hide edit button for completed tasks */
       .task-content.task--done ~ .task-actions {
-        background: transparent;
-        border: none;
-        box-shadow: none;
-        pointer-events: none; /* Disable interactions */
-      }
-      
-      /* Ensure completed tasks can't be swiped */
-      .task-content.task--done ~ .task-actions .edit-btn {
-        display: none;
+        display: none; /* Completely remove from view */
       }
       
       /* Removed problematic snap-back animation that caused overflow */
@@ -354,8 +346,8 @@
     <main>
       <section id="tab-today">
         <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.21-no-edit-completed</h2>
-          <div class="muted" style="margin-bottom:14px">Disabled edit button for completed tasks - no orange background or swipe functionality when done.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.22-invisible-completed</h2>
+          <div class="muted" style="margin-bottom:14px">Completely hide edit button visuals for completed tasks - no orange background visible at all.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -372,7 +364,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.21-no-edit-completed — active:0 done:0
+              build: STEP-1.22-invisible-completed — active:0 done:0
             </footer>
         </div>
       </section>
@@ -464,7 +456,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.21-no-edit-completed
+      build: STEP-1.22-invisible-completed
     </div>
 
     <script>
@@ -1482,7 +1474,7 @@
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.21-no-edit-completed — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.22-invisible-completed — active:${activeCount} done:${doneCount}`;
           }
         }
 
