@@ -213,6 +213,12 @@
         transform: translate3d(0,0,0) rotate(2deg) scale(1.02);
       }
       
+      .flip-moving { will-change: transform; }
+      
+      @media (prefers-reduced-motion: reduce) {
+        .flip-moving { transition: none !important; }
+      }
+      
       /* Reduce hover elevation while another card is being dragged */
       body.drag-active .task-swipe-container[draggable="true"]:hover {
         transform: none;
@@ -424,8 +430,8 @@
     <main>
       <section id="tab-today">
                   <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.56-drag-stable-index</h2>
-          <div class="muted" style="margin-bottom:14px">Stable index-based placeholder (center compare) to prevent bouncing.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.57-drag-flip</h2>
+          <div class="muted" style="margin-bottom:14px">FLIP animations for siblings while dragging; smooth slide-out of the way.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -442,7 +448,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.56-drag-stable-index — active:0 done:0
+              build: STEP-1.57-drag-flip — active:0 done:0
             </footer>
         </div>
       </section>
@@ -562,7 +568,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.56-drag-stable-index
+      build: STEP-1.57-drag-flip
     </div>
 
     <script>
@@ -1146,6 +1152,14 @@
           const currentChildren = Array.from(todayList.children);
           const currentIndex = currentChildren.indexOf(dragPlaceholder);
 
+          // FLIP: measure first positions for siblings (excluding dragged and placeholder)
+          const firstRects = new Map();
+          for (const el of droppables) {
+            if (el !== dragPlaceholder && el !== draggedElement) {
+              firstRects.set(el, el.getBoundingClientRect());
+            }
+          }
+
           if (newIndex !== currentIndex) {
             if (newIndex >= droppables.length) {
               // Append at end
@@ -1159,6 +1173,34 @@
                 todayList.insertBefore(dragPlaceholder, beforeNode);
               }
             }
+
+            // FLIP: measure last, invert, and animate
+            requestAnimationFrame(() => {
+              for (const el of droppables) {
+                if (el === dragPlaceholder || el === draggedElement) continue;
+                const first = firstRects.get(el);
+                if (!first) continue;
+                const last = el.getBoundingClientRect();
+                const dx = first.left - last.left;
+                const dy = first.top - last.top;
+                if (dx !== 0 || dy !== 0) {
+                  el.classList.add('flip-moving');
+                  el.style.transition = 'none';
+                  el.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
+                  requestAnimationFrame(() => {
+                    el.style.transition = 'transform 180ms cubic-bezier(0.2, 0, 0.2, 1)';
+                    el.style.transform = 'translate3d(0, 0, 0)';
+                  });
+                  const cleanup = () => {
+                    el.style.transition = '';
+                    el.style.transform = '';
+                    el.classList.remove('flip-moving');
+                    el.removeEventListener('transitionend', cleanup);
+                  };
+                  el.addEventListener('transitionend', cleanup);
+                }
+              }
+            });
           }
         });
       }
@@ -2273,7 +2315,7 @@
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.56-drag-stable-index — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.57-drag-flip — active:${activeCount} done:${doneCount}`;
           }
         }
 
