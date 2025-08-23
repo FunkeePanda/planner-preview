@@ -75,18 +75,20 @@
         right: 0;
         top: 0;
         bottom: 0;
-        width: 80px;
+        width: 120px; /* Wider to extend further left for drawer effect */
         display: flex;
         align-items: center;
-        justify-content: center;
-        /* Only show background when revealed */
-        background: transparent;
+        justify-content: flex-end; /* Align button to the right side */
+        padding-right: 20px; /* Space from the right edge */
+        /* Always show background for consistent drawer look */
+        background: linear-gradient(135deg, rgba(255, 165, 0, 0.95), rgba(255, 140, 0, 0.95));
         border-radius: 0 12px 12px 0;
         z-index: -10; /* Much lower than content */
         opacity: 1;
-        /* No border or shadow in default state to prevent bleeding */
-        border: none;
-        box-shadow: none;
+        /* Always show border and shadow for depth */
+        border: 1px solid rgba(255,255,255,.12);
+        border-left: none;
+        box-shadow: -2px 0 8px rgba(255, 165, 0, 0.3);
         /* Remove any potential visual artifacts */
         outline: none;
       }
@@ -153,15 +155,12 @@
       
       /* Swipe states - card slides to reveal button underneath */
       .task-swipe-container.swiped .task-content {
-        transform: translate3d(-80px, 0, 0);
+        transform: translate3d(-100px, 0, 0);
       }
       
-      /* Enhanced styling when button is revealed */
+      /* Enhanced shadow when button is revealed */
       .task-swipe-container.swiped .task-actions {
-        background: linear-gradient(135deg, rgba(255, 165, 0, 0.95), rgba(255, 140, 0, 0.95));
-        border: 1px solid rgba(255,255,255,.12);
-        border-left: none;
-        box-shadow: -2px 0 12px rgba(255, 165, 0, 0.4);
+        box-shadow: -2px 0 12px rgba(255, 165, 0, 0.5);
       }
       
       /* Removed problematic snap-back animation that caused overflow */
@@ -174,16 +173,17 @@
         }
         
         .task-actions {
-          width: 70px;
+          width: 100px; /* Wider for mobile drawer effect */
+          padding-right: 15px;
         }
         
         .edit-btn {
-          min-width: 70px;
+          min-width: 60px;
           font-size: 18px;
         }
         
         .task-swipe-container.swiped .task-content {
-          transform: translate3d(-70px, 0, 0);
+          transform: translate3d(-80px, 0, 0);
         }
       }
 
@@ -341,8 +341,8 @@
     <main>
       <section id="tab-today">
         <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.17-opaque</h2>
-          <div class="muted" style="margin-bottom:14px">Fixed transparency issue - task cards now have solid opaque background to fully hide edit button.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.18-drawer</h2>
+          <div class="muted" style="margin-bottom:14px">Improved drawer effect - edit button background always present and extended wider for continuous look.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -359,7 +359,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.17-opaque — active:0 done:0
+              build: STEP-1.18-drawer — active:0 done:0
             </footer>
         </div>
       </section>
@@ -451,7 +451,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.17-opaque
+      build: STEP-1.18-drawer
     </div>
 
     <script>
@@ -713,7 +713,7 @@
         // Get responsive swipe distances based on screen size
         const getSwipeDistances = () => {
           const isMobile = window.innerWidth <= 480;
-          const buttonWidth = isMobile ? 70 : 80;
+          const buttonWidth = isMobile ? 80 : 100; // Updated for wider drawer
           return {
             maxSwipe: -buttonWidth, // Cap exactly at button width
             threshold: -buttonWidth * 0.4, // 40% of button width to trigger (more responsive)
@@ -1424,7 +1424,7 @@
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.17-opaque — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.18-drawer — active:${activeCount} done:${doneCount}`;
           }
         }
 
