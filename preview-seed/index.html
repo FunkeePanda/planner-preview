@@ -186,6 +186,44 @@
         display: none !important; /* Completely remove from view */
       }
       
+      /* Drag and drop styling */
+      .task-swipe-container {
+        cursor: move;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+      
+      .task-swipe-container[draggable="true"]:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+      
+      .task-swipe-container.dragging {
+        opacity: 0.5;
+        transform: rotate(5deg) scale(1.05);
+        z-index: 1000;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+      }
+      
+      .task-swipe-container.drag-over {
+        transform: translateY(-4px);
+        box-shadow: 0 6px 20px rgba(108, 99, 255, 0.3);
+        border: 2px dashed rgba(108, 99, 255, 0.5);
+      }
+      
+      .drag-placeholder {
+        height: 60px;
+        background: rgba(108, 99, 255, 0.1);
+        border: 2px dashed rgba(108, 99, 255, 0.3);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: rgba(108, 99, 255, 0.7);
+        font-size: 14px;
+        margin: 5px 0;
+        transition: all 0.2s ease;
+      }
+      
       /* Removed problematic snap-back animation that caused overflow */
       
       /* Optimized mobile experience */
@@ -368,8 +406,8 @@
     <main>
       <section id="tab-today">
         <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.27-debug-deletion</h2>
-          <div class="muted" style="margin-bottom:14px">Debugging deletion - simplified logic with console logs to identify empty space issue.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.28-drag-drop</h2>
+          <div class="muted" style="margin-bottom:14px">Added drag-and-drop reordering - drag active tasks to reorder with smooth animations and persistence.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -386,7 +424,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.27-debug-deletion — active:0 done:0
+              build: STEP-1.28-drag-drop — active:0 done:0
             </footer>
         </div>
       </section>
@@ -494,7 +532,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.27-debug-deletion
+      build: STEP-1.28-drag-drop
     </div>
 
     <script>
@@ -543,7 +581,7 @@
           const parsed = JSON.parse(raw);
           
           // Migration-friendly task normalization
-          return parsed.map(t => ({
+          return parsed.map((t, index) => ({
             id: String(t.id || generateId()),
             title: String(t.title || 'Untitled'),
             note: t.note || '',
@@ -551,6 +589,8 @@
             tag: t.tag || '',
             // Coerce any old flags (checked, done, isDone) into `completed`
             completed: !!(t.completed || t.checked || t.done || t.isDone || false),
+            // Add sortOrder for drag and drop (migration)
+            sortOrder: t.sortOrder !== undefined ? t.sortOrder : index * 1000,
             // Add timer if missing (migration)
             timer: t.timer || (t.minutes ? {
               totalSec: t.minutes * 60,
@@ -654,6 +694,12 @@
         swipeContainer.dataset.taskId = task.id;
         swipeContainer.dataset.testid = `task-row-${task.id}`;
         
+        // Make active tasks draggable
+        if (!task.completed) {
+          swipeContainer.draggable = true;
+          swipeContainer.dataset.sortOrder = task.sortOrder || 0;
+        }
+        
         // Create task content
         const taskContent = document.createElement('div');
         taskContent.className = 'task-content';
@@ -754,6 +800,184 @@
         }
         
         return swipeContainer;
+      }
+      
+      // Drag and drop functionality
+      let draggedElement = null;
+      let draggedTaskId = null;
+      let dragPlaceholder = null;
+      
+      function addDragAndDropHandlers() {
+        const todayList = document.getElementById('today-list');
+        
+        // Add event listeners to the container for event delegation
+        todayList.addEventListener('dragstart', handleDragStart);
+        todayList.addEventListener('dragover', handleDragOver);
+        todayList.addEventListener('dragenter', handleDragEnter);
+        todayList.addEventListener('dragleave', handleDragLeave);
+        todayList.addEventListener('drop', handleDrop);
+        todayList.addEventListener('dragend', handleDragEnd);
+      }
+      
+      function handleDragStart(e) {
+        const taskCard = e.target.closest('.task-swipe-container');
+        if (!taskCard || !taskCard.draggable) return;
+        
+        draggedElement = taskCard;
+        draggedTaskId = taskCard.dataset.taskId;
+        
+        // Add dragging class for visual feedback
+        taskCard.classList.add('dragging');
+        
+        // Set drag data
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/html', taskCard.outerHTML);
+        
+        // Haptic feedback if available
+        if (navigator.vibrate) {
+          navigator.vibrate(50);
+        }
+        
+        console.log('DevLog: Drag started for task:', draggedTaskId);
+      }
+      
+      function handleDragOver(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        
+        const taskCard = e.target.closest('.task-swipe-container');
+        if (!taskCard || taskCard === draggedElement) return;
+        
+        // Get all draggable elements
+        const draggableElements = [...document.querySelectorAll('#today-list .task-swipe-container[draggable="true"]')];
+        const draggedIndex = draggableElements.indexOf(draggedElement);
+        const targetIndex = draggableElements.indexOf(taskCard);
+        
+        // Remove existing placeholder
+        if (dragPlaceholder) {
+          dragPlaceholder.remove();
+          dragPlaceholder = null;
+        }
+        
+        // Create placeholder
+        dragPlaceholder = document.createElement('div');
+        dragPlaceholder.className = 'drag-placeholder';
+        dragPlaceholder.innerHTML = 'Drop here';
+        
+        // Insert placeholder at the correct position
+        if (draggedIndex < targetIndex) {
+          taskCard.parentNode.insertBefore(dragPlaceholder, taskCard.nextSibling);
+        } else {
+          taskCard.parentNode.insertBefore(dragPlaceholder, taskCard);
+        }
+      }
+      
+      function handleDragEnter(e) {
+        e.preventDefault();
+        const taskCard = e.target.closest('.task-swipe-container');
+        if (taskCard && taskCard !== draggedElement) {
+          taskCard.classList.add('drag-over');
+        }
+      }
+      
+      function handleDragLeave(e) {
+        const taskCard = e.target.closest('.task-swipe-container');
+        if (taskCard) {
+          taskCard.classList.remove('drag-over');
+        }
+      }
+      
+      function handleDrop(e) {
+        e.preventDefault();
+        
+        if (!draggedElement || !draggedTaskId) return;
+        
+        // Get all draggable elements
+        const draggableElements = [...document.querySelectorAll('#today-list .task-swipe-container[draggable="true"]')];
+        
+        let newIndex = 0;
+        if (dragPlaceholder) {
+          // Find the index where the placeholder is
+          const allChildren = [...document.getElementById('today-list').children];
+          newIndex = allChildren.indexOf(dragPlaceholder);
+          
+          // Adjust for the dragged element being removed from its original position
+          const draggedIndex = draggableElements.indexOf(draggedElement);
+          if (draggedIndex < newIndex) {
+            newIndex--;
+          }
+        }
+        
+        console.log('DevLog: Dropping task at index:', newIndex);
+        
+        // Update sort order in state
+        updateTaskSortOrder(draggedTaskId, newIndex);
+        
+        // Clean up
+        if (dragPlaceholder) {
+          dragPlaceholder.remove();
+          dragPlaceholder = null;
+        }
+      }
+      
+      function handleDragEnd(e) {
+        const taskCard = e.target.closest('.task-swipe-container');
+        if (taskCard) {
+          taskCard.classList.remove('dragging');
+        }
+        
+        // Clean up drag over states
+        document.querySelectorAll('.task-swipe-container.drag-over').forEach(el => {
+          el.classList.remove('drag-over');
+        });
+        
+        // Clean up placeholder
+        if (dragPlaceholder) {
+          dragPlaceholder.remove();
+          dragPlaceholder = null;
+        }
+        
+        draggedElement = null;
+        draggedTaskId = null;
+      }
+      
+      function updateTaskSortOrder(taskId, newIndex) {
+        const activeTasks = getActive();
+        const taskToMove = activeTasks.find(t => t.id === taskId);
+        if (!taskToMove) return;
+        
+        // Create new sort orders based on the new position
+        const newSortOrders = [];
+        activeTasks.forEach((task, index) => {
+          if (task.id === taskId) return; // Skip the moved task
+          
+          if (index === newIndex) {
+            newSortOrders.push({ id: taskId, sortOrder: index * 1000 });
+            newSortOrders.push({ id: task.id, sortOrder: (index + 0.5) * 1000 });
+          } else if (index > newIndex) {
+            newSortOrders.push({ id: task.id, sortOrder: (index + 1) * 1000 });
+          } else {
+            newSortOrders.push({ id: task.id, sortOrder: index * 1000 });
+          }
+        });
+        
+        // If dropping at the end
+        if (newIndex >= activeTasks.length - 1) {
+          newSortOrders.push({ id: taskId, sortOrder: activeTasks.length * 1000 });
+        }
+        
+        // Update tasks state with new sort orders
+        setTasks(prev => {
+          return prev.map(task => {
+            const newOrder = newSortOrders.find(o => o.id === task.id);
+            if (newOrder) {
+              return { ...task, sortOrder: newOrder.sortOrder };
+            }
+            return task;
+          });
+        });
+        
+        console.log('DevLog: Updated sort orders:', newSortOrders);
       }
 
       // Enhanced swipe gesture detection with smooth physics
@@ -1225,7 +1449,7 @@
 
         // Derived state (like useMemo)
         function getActive() {
-          return tasks.filter(t => !t.completed);
+          return tasks.filter(t => !t.completed).sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
         }
 
         function getDone() {
@@ -1305,6 +1529,12 @@
               updatedAt: Date.now()
             };
           }
+          
+          // Add sortOrder - new tasks go to the top
+          if (taskData.sortOrder === undefined) {
+            taskData.sortOrder = Date.now();
+          }
+          
           setTasks(prev => [taskData, ...prev]);
         }
 
@@ -1584,7 +1814,7 @@
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.27-debug-deletion — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.28-drag-drop — active:${activeCount} done:${doneCount}`;
           }
         }
 
@@ -1993,10 +2223,14 @@
         // Initialize
         loadTasksFromStorage();
         
+        // Initialize drag and drop
+        addDragAndDropHandlers();
+        
         // Development guardrail
         console.log('🔧 DevLog: Checkbox completion system initialized');
         console.log('📋 Run testCheckboxFlow() to verify checkbox behavior');
         console.log('📊 Debug footer shows live active/done counts');
+        console.log('🔄 Drag and drop reordering enabled');
       })();
     </script>
   </body>
