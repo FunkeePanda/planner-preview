@@ -71,10 +71,10 @@
       
       .task-actions {
         position: absolute;
-        right: 0;
-        top: 0;
-        bottom: 0;
-        width: 80px;
+        right: -2px; /* Slightly outside container to prevent edge visibility */
+        top: -1px;
+        bottom: -1px;
+        width: 82px; /* Slightly wider to ensure full coverage */
         display: flex;
         align-items: center;
         justify-content: center;
@@ -82,10 +82,9 @@
         border-radius: 0 12px 12px 0;
         z-index: -1; /* Far behind content */
         opacity: 1;
-        /* Simple border and shadow */
-        border: 1px solid rgba(255,255,255,.12);
-        border-left: none;
-        box-shadow: -2px 0 8px rgba(255, 165, 0, 0.3);
+        /* No border or shadow in default state to prevent bleeding */
+        border: none;
+        box-shadow: none;
       }
       
       .task-content {
@@ -147,8 +146,14 @@
         transform: translate3d(-80px, 0, 0);
       }
       
-      /* Enhanced shadow when button is revealed */
+      /* Enhanced styling when button is revealed */
       .task-swipe-container.swiped .task-actions {
+        right: 0; /* Move back to proper position when revealed */
+        top: 0;
+        bottom: 0;
+        width: 80px; /* Return to normal width */
+        border: 1px solid rgba(255,255,255,.12);
+        border-left: none;
         box-shadow: -2px 0 12px rgba(255, 165, 0, 0.4);
       }
       
@@ -162,7 +167,7 @@
         }
         
         .task-actions {
-          width: 70px;
+          width: 72px; /* Slightly wider for mobile */
         }
         
         .edit-btn {
@@ -172,6 +177,10 @@
         
         .task-swipe-container.swiped .task-content {
           transform: translate3d(-70px, 0, 0);
+        }
+        
+        .task-swipe-container.swiped .task-actions {
+          width: 70px; /* Return to normal mobile width when revealed */
         }
       }
 
@@ -329,8 +338,8 @@
     <main>
       <section id="tab-today">
         <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.13-zindex</h2>
-          <div class="muted" style="margin-bottom:14px">Fixed z-index layering with isolation and negative z-index for proper drawer effect.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.14-hidden</h2>
+          <div class="muted" style="margin-bottom:14px">Complete button hiding - positioned outside container with no shadows/borders until revealed.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -347,7 +356,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.13-zindex — active:0 done:0
+              build: STEP-1.14-hidden — active:0 done:0
             </footer>
         </div>
       </section>
@@ -439,7 +448,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.13-zindex
+      build: STEP-1.14-hidden
     </div>
 
     <script>
@@ -1412,7 +1421,7 @@
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.13-zindex — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.14-hidden — active:${activeCount} done:${doneCount}`;
           }
         }
 
@@ -1581,9 +1590,9 @@
           }
         };
 
-        // Test drawer effect and z-index layering
-        window.testDrawerLayering = function() {
-          console.log('🧪 Testing drawer layering and z-index...');
+        // Test complete button hiding and drawer effect
+        window.testCompleteHiding = function() {
+          console.log('🧪 Testing complete button hiding and drawer effect...');
           const containers = document.querySelectorAll('.task-swipe-container');
           if (containers.length > 0) {
             const firstContainer = containers[0];
@@ -1592,34 +1601,51 @@
             const editBtn = firstContainer.querySelector('.edit-btn');
             
             if (taskActions && taskContent && editBtn) {
-              console.log('=== Z-INDEX ANALYSIS ===');
+              console.log('=== COMPLETE HIDING TEST ===');
               
-              const contentZ = getComputedStyle(taskContent).zIndex;
-              const actionsZ = getComputedStyle(taskActions).zIndex;
-              const containerZ = getComputedStyle(firstContainer).zIndex;
+              // Check positioning and styling
+              const actionsStyle = getComputedStyle(taskActions);
+              const contentStyle = getComputedStyle(taskContent);
+              const containerStyle = getComputedStyle(firstContainer);
               
-              console.log('Z-index values:');
-              console.log('- Container:', containerZ);
-              console.log('- Actions:', actionsZ, '(should be negative)');
-              console.log('- Content:', contentZ, '(should be positive)');
+              console.log('Positioning analysis:');
+              console.log('- Container overflow:', containerStyle.overflow);
+              console.log('- Actions right:', actionsStyle.right);
+              console.log('- Actions width:', actionsStyle.width);
+              console.log('- Actions z-index:', actionsStyle.zIndex);
+              console.log('- Actions box-shadow:', actionsStyle.boxShadow);
+              console.log('- Actions border:', actionsStyle.border);
+              console.log('- Content z-index:', contentStyle.zIndex);
               
-              console.log('=== VISUAL OVERLAP TEST ===');
-              
-              // Test if button is visually hidden by checking element positions
+              // Check visual overlap
               const contentRect = taskContent.getBoundingClientRect();
               const actionsRect = taskActions.getBoundingClientRect();
+              const containerRect = firstContainer.getBoundingClientRect();
               
-              // Check if content completely covers actions area
-              const fullyCovered = contentRect.left <= actionsRect.left && 
-                                 contentRect.right >= actionsRect.right &&
-                                 contentRect.top <= actionsRect.top &&
-                                 contentRect.bottom >= actionsRect.bottom;
+              console.log('Visual positioning:');
+              console.log('- Container bounds:', {
+                left: containerRect.left,
+                right: containerRect.right,
+                width: containerRect.width
+              });
+              console.log('- Content bounds:', {
+                left: contentRect.left,
+                right: contentRect.right,
+                width: contentRect.width
+              });
+              console.log('- Actions bounds:', {
+                left: actionsRect.left,
+                right: actionsRect.right,
+                width: actionsRect.width
+              });
               
-              console.log('Button fully covered by content:', fullyCovered ? '✅ YES' : '❌ NO');
+              // Check if any part of actions is visible within container bounds
+              const actionsVisibleInContainer = actionsRect.left < containerRect.right && 
+                                              actionsRect.right > containerRect.left;
+              const actionsCompletelyHidden = actionsRect.left >= containerRect.right;
               
-              // Test stacking context
-              const contentStackingContext = getComputedStyle(taskContent).isolation;
-              console.log('Content isolation:', contentStackingContext);
+              console.log('Actions visible in container:', actionsVisibleInContainer ? '❌ YES (BAD)' : '✅ NO (GOOD)');
+              console.log('Actions completely outside container:', actionsCompletelyHidden ? '✅ YES (GOOD)' : '❌ NO (BAD)');
               
               console.log('=== DRAWER REVEAL TEST ===');
               
@@ -1629,21 +1655,23 @@
               setTimeout(() => {
                 const swipedContentRect = taskContent.getBoundingClientRect();
                 const swipedActionsRect = taskActions.getBoundingClientRect();
+                const swipedActionsStyle = getComputedStyle(taskActions);
                 
-                // Check if button is now visible in the revealed area
-                const buttonVisible = swipedActionsRect.right > swipedContentRect.right;
+                console.log('After swipe styling:');
+                console.log('- Actions right:', swipedActionsStyle.right);
+                console.log('- Actions width:', swipedActionsStyle.width);
+                console.log('- Actions box-shadow:', swipedActionsStyle.boxShadow);
+                console.log('- Actions border:', swipedActionsStyle.border);
+                
+                const buttonNowVisible = swipedActionsRect.right > swipedContentRect.right;
                 const drawerEffect = swipedContentRect.left < contentRect.left;
                 
                 console.log('Drawer slide effect:', drawerEffect ? '✅ YES' : '❌ NO');
-                console.log('Button revealed in gap:', buttonVisible ? '✅ YES' : '❌ NO');
-                
-                // Check if button appears to be behind the card (not floating on top)
-                const buttonBehind = swipedActionsRect.left < swipedContentRect.right;
-                console.log('Button appears behind card:', buttonBehind ? '✅ YES' : '❌ NO');
+                console.log('Button now visible in gap:', buttonNowVisible ? '✅ YES' : '❌ NO');
                 
                 setTimeout(() => {
                   firstContainer.classList.remove('swiped');
-                  console.log('✅ Drawer layering test complete');
+                  console.log('✅ Complete hiding test finished');
                 }, 1000);
               }, 300);
             }
