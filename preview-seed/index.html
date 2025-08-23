@@ -408,8 +408,8 @@
     <main>
       <section id="tab-today">
         <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.32-fix-gesture-conflict</h2>
-          <div class="muted" style="margin-bottom:14px">Fixed gesture conflicts - drag and swipe are now mutually exclusive based on movement direction.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.33-restore-delete-animation</h2>
+          <div class="muted" style="margin-bottom:14px">Restored smooth slide-out animation during task deletion with proper DOM preservation.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -426,7 +426,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.32-fix-gesture-conflict — active:0 done:0
+              build: STEP-1.33-restore-delete-animation — active:0 done:0
             </footer>
         </div>
       </section>
@@ -534,7 +534,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.32-fix-gesture-conflict
+      build: STEP-1.33-restore-delete-animation
     </div>
 
     <script>
@@ -1566,16 +1566,48 @@
       function confirmDeleteTask() {
         if (!taskToDelete) return;
         
-        // Remove from state immediately - no animation for now to debug
-        console.log('DevLog: Removing task from state immediately:', taskToDelete);
-        setTasks(prev => {
-          const newTasks = prev.filter(t => t.id !== taskToDelete);
-          console.log('DevLog: Tasks after deletion:', newTasks.length, 'remaining');
-          console.log('DevLog: Remaining task IDs:', newTasks.map(t => t.id));
-          return newTasks;
-        });
+        const taskElement = document.querySelector(`[data-task-id="${taskToDelete}"]`);
         
-        createToast('Task deleted');
+        if (taskElement) {
+          console.log('DevLog: Starting delete animation for task:', taskToDelete);
+          
+          // Close any open swipe first
+          taskElement.classList.remove('swiped');
+          const taskContent = taskElement.querySelector('.task-content');
+          if (taskContent) {
+            taskContent.style.transform = '';
+          }
+          
+          // Mark as animating to prevent interference from renderTasks
+          taskElement.dataset.animatingDelete = 'true';
+          
+          // Add smooth slide-out animation
+          taskElement.style.transition = 'transform 0.3s ease-out, opacity 0.3s ease-out';
+          taskElement.style.transform = 'translateX(-100%)';
+          taskElement.style.opacity = '0';
+          
+          // After animation completes, remove from state and DOM
+          setTimeout(() => {
+            console.log('DevLog: Animation complete, removing task from state:', taskToDelete);
+            
+            // Remove the animating flag and element
+            taskElement.remove();
+            
+            setTasks(prev => {
+              const newTasks = prev.filter(t => t.id !== taskToDelete);
+              console.log('DevLog: Tasks after deletion:', newTasks.length, 'remaining');
+              return newTasks;
+            });
+            createToast('Task deleted');
+          }, 300); // Match animation duration
+          
+        } else {
+          // Fallback if element not found
+          console.log('DevLog: Task element not found, removing from state directly');
+          setTasks(prev => prev.filter(t => t.id !== taskToDelete));
+          createToast('Task deleted');
+        }
+        
         closeDeleteModal();
       }
       
@@ -1927,10 +1959,32 @@
             }
           });
 
-          // Clear containers completely
+          // Clear containers completely, but preserve animating delete elements
           console.log('DevLog: Before clearing - todayList children:', todayList.children.length, 'completedList children:', completedList.children.length);
+          
+          // Preserve animating delete elements
+          const animatingElements = [];
+          Array.from(todayList.children).forEach(child => {
+            if (child.dataset.animatingDelete === 'true') {
+              animatingElements.push(child);
+              console.log('DevLog: Preserving animating element:', child.dataset.taskId);
+            }
+          });
+          Array.from(completedList.children).forEach(child => {
+            if (child.dataset.animatingDelete === 'true') {
+              animatingElements.push(child);
+              console.log('DevLog: Preserving animating element:', child.dataset.taskId);
+            }
+          });
+          
           todayList.innerHTML = '';
           completedList.innerHTML = '';
+          
+          // Re-append animating elements to todayList (they'll slide out from there)
+          animatingElements.forEach(element => {
+            todayList.appendChild(element);
+          });
+          
           console.log('DevLog: After clearing - todayList children:', todayList.children.length, 'completedList children:', completedList.children.length);
 
           // Render active tasks - reuse existing cards where possible
@@ -2064,7 +2118,7 @@
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.32-fix-gesture-conflict — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.33-restore-delete-animation — active:${activeCount} done:${doneCount}`;
           }
         }
 
