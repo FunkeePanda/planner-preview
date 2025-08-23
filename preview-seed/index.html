@@ -368,8 +368,8 @@
     <main>
       <section id="tab-today">
         <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.24-swipe-delete</h2>
-          <div class="muted" style="margin-bottom:14px">Added swipe-to-delete - swipe left reveals both edit (✏️) and delete (🗑️) buttons with smooth animations.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.25-delete-confirmation</h2>
+          <div class="muted" style="margin-bottom:14px">Added custom delete confirmation modal - styled dialog with "Cancel" and red "Delete" buttons.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -386,7 +386,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.24-swipe-delete — active:0 done:0
+              build: STEP-1.25-delete-confirmation — active:0 done:0
             </footer>
         </div>
       </section>
@@ -465,6 +465,22 @@
       </div>
     </div>
 
+    <!-- Delete Confirmation Modal -->
+    <div id="delete-modal-backdrop" class="modal-backdrop" hidden>
+      <div class="modal" onclick="event.stopPropagation()" style="max-width:400px">
+        <h3 style="margin:0 0 12px 0;color:#fff">Delete this task?</h3>
+        
+        <p style="margin:0 0 20px 0;color:rgba(255,255,255,0.8);line-height:1.4">
+          Are you sure you want to delete this task? This cannot be undone.
+        </p>
+        
+        <div class="modal-actions">
+          <button id="delete-modal-cancel" class="btn">Cancel</button>
+          <button id="delete-modal-confirm" class="btn" style="background:#dc3545;border:1px solid #dc3545;color:#fff">Delete</button>
+        </div>
+      </div>
+    </div>
+
     <div class="tab-bar">
       <button class="tab-btn" data-tab="today" aria-selected="true">Today</button>
       <button class="tab-btn" data-tab="week" aria-selected="false">Week</button>
@@ -478,7 +494,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.24-swipe-delete
+      build: STEP-1.25-delete-confirmation
     </div>
 
     <script>
@@ -1049,13 +1065,34 @@
         createToast('Task updated');
       }
       
-      // Delete task with animation
-      function deleteTask(taskId) {
-        if (!confirm('Are you sure you want to delete this task?')) {
-          return;
-        }
+      // Show delete confirmation modal
+      let taskToDelete = null;
+      
+      function showDeleteModal(taskId) {
+        taskToDelete = taskId;
+        const deleteBackdrop = document.getElementById('delete-modal-backdrop');
+        deleteBackdrop.removeAttribute('hidden');
         
-        const taskElement = document.querySelector(`[data-task-id="${taskId}"]`);
+        // Close any open swipe actions
+        document.querySelectorAll('.task-swipe-container.swiped').forEach(container => {
+          container.classList.remove('swiped');
+        });
+        
+        // Focus the cancel button for accessibility
+        const cancelBtn = document.getElementById('delete-modal-cancel');
+        setTimeout(() => cancelBtn.focus(), 100);
+      }
+      
+      function closeDeleteModal() {
+        const deleteBackdrop = document.getElementById('delete-modal-backdrop');
+        deleteBackdrop.setAttribute('hidden', '');
+        taskToDelete = null;
+      }
+      
+      function confirmDeleteTask() {
+        if (!taskToDelete) return;
+        
+        const taskElement = document.querySelector(`[data-task-id="${taskToDelete}"]`);
         if (taskElement) {
           // Add deletion animation
           taskElement.style.transition = 'transform 0.3s ease-out, opacity 0.3s ease-out';
@@ -1064,14 +1101,21 @@
           
           // Remove from state after animation
           setTimeout(() => {
-            setTasks(prev => prev.filter(t => t.id !== taskId));
+            setTasks(prev => prev.filter(t => t.id !== taskToDelete));
             createToast('Task deleted');
           }, 300);
         } else {
           // Fallback if element not found
-          setTasks(prev => prev.filter(t => t.id !== taskId));
+          setTasks(prev => prev.filter(t => t.id !== taskToDelete));
           createToast('Task deleted');
         }
+        
+        closeDeleteModal();
+      }
+      
+      // Legacy function for backward compatibility
+      function deleteTask(taskId) {
+        showDeleteModal(taskId);
       }
 
       // Get task data from DOM card
@@ -1544,7 +1588,7 @@
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.24-swipe-delete — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.25-delete-confirmation — active:${activeCount} done:${doneCount}`;
           }
         }
 
@@ -1635,6 +1679,26 @@
         document.addEventListener('keydown', function(e) {
           if (e.key === 'Escape' && !editBackdrop?.hasAttribute('hidden')) {
             closeEditModal();
+          }
+        });
+
+        // Delete modal event listeners
+        const deleteBackdrop = document.getElementById('delete-modal-backdrop');
+        const deleteCancelBtn = document.getElementById('delete-modal-cancel');
+        const deleteConfirmBtn = document.getElementById('delete-modal-confirm');
+        
+        deleteCancelBtn?.addEventListener('click', closeDeleteModal);
+        deleteConfirmBtn?.addEventListener('click', confirmDeleteTask);
+        
+        // Close delete modal on backdrop click
+        deleteBackdrop?.addEventListener('click', function(e) {
+          if (e.target === deleteBackdrop) closeDeleteModal();
+        });
+        
+        // Close delete modal on Escape key
+        document.addEventListener('keydown', function(e) {
+          if (e.key === 'Escape' && !deleteBackdrop?.hasAttribute('hidden')) {
+            closeDeleteModal();
           }
         });
 
