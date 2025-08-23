@@ -66,25 +66,6 @@
         /* No background - let task content be the only visible card */
       }
       
-      .task-content {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 12px;
-        background: rgba(255,255,255,.06);
-        border: 1px solid rgba(255,255,255,.12);
-        border-radius: 12px;
-        transition: transform 0.25s cubic-bezier(0.2, 0.0, 0.2, 1);
-        position: relative;
-        z-index: 100; /* Much higher z-index to ensure it's on top */
-        /* Prevent content from becoming transparent during swipe */
-        will-change: transform;
-        backface-visibility: hidden;
-        /* Ensure card covers the button area completely */
-        width: 100%;
-        margin: 0;
-      }
-      
       .task-actions {
         position: absolute;
         right: 0;
@@ -96,13 +77,32 @@
         justify-content: center;
         background: linear-gradient(135deg, rgba(255, 165, 0, 0.95), rgba(255, 140, 0, 0.95));
         border-radius: 0 12px 12px 0;
-        z-index: 1; /* Much lower z-index - definitely behind card */
+        /* No z-index - let natural document order work */
         opacity: 1;
         transform: translateX(0);
         /* Simple border and shadow */
         border: 1px solid rgba(255,255,255,.12);
         border-left: none;
         box-shadow: -2px 0 8px rgba(255, 165, 0, 0.3);
+      }
+      
+      .task-content {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px;
+        background: rgba(255,255,255,.06);
+        border: 1px solid rgba(255,255,255,.12);
+        border-radius: 12px;
+        transition: transform 0.25s cubic-bezier(0.2, 0.0, 0.2, 1);
+        position: relative;
+        /* No z-index - let natural document order work */
+        /* Prevent content from becoming transparent during swipe */
+        will-change: transform;
+        backface-visibility: hidden;
+        /* Ensure card covers the button area completely */
+        width: 100%;
+        margin: 0;
       }
       
       .edit-btn {
@@ -323,8 +323,8 @@
     <main>
       <section id="tab-today">
         <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.9-clean</h2>
-          <div class="muted" style="margin-bottom:14px">Fixed double card stacking and button layering - clean single card with button behind.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.10-layering</h2>
+          <div class="muted" style="margin-bottom:14px">Fixed DOM order and z-index - edit button now properly behind task card.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -341,7 +341,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.9-clean — active:0 done:0
+              build: STEP-1.10-layering — active:0 done:0
             </footer>
         </div>
       </section>
@@ -433,7 +433,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.9-clean
+      build: STEP-1.10-layering
     </div>
 
     <script>
@@ -667,9 +667,9 @@
         // Add swipe gesture support
         addSwipeGesture(swipeContainer, taskContent);
         
-        // Append content and actions to swipe container
-        swipeContainer.appendChild(taskContent);
+        // Append actions first (behind), then content (on top)
         swipeContainer.appendChild(taskActions);
+        swipeContainer.appendChild(taskContent);
         
         if (task.completed) {
           taskContent.classList.add('task--done');
@@ -1406,7 +1406,7 @@
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.9-clean — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.10-layering — active:${activeCount} done:${doneCount}`;
           }
         }
 
@@ -1575,45 +1575,45 @@
           }
         };
 
-        // Test polished swipe behavior
-        window.testSwipePolish = function() {
-          console.log('🧪 Testing polished swipe experience...');
+        // Test DOM layering order
+        window.testDOMLayering = function() {
+          console.log('🧪 Testing DOM layering order...');
           const containers = document.querySelectorAll('.task-swipe-container');
           if (containers.length > 0) {
             const firstContainer = containers[0];
+            const children = Array.from(firstContainer.children);
+            
+            console.log('DOM order (should be actions first, then content):');
+            children.forEach((child, index) => {
+              console.log(`${index + 1}. ${child.className} (${child.tagName})`);
+            });
+            
             const taskContent = firstContainer.querySelector('.task-content');
             const taskActions = firstContainer.querySelector('.task-actions');
-            const editBtn = firstContainer.querySelector('.edit-btn');
             
-            console.log('Visual integration check:');
-            console.log('- Container background:', getComputedStyle(firstContainer).background);
-            console.log('- Content transition:', getComputedStyle(taskContent).transition);
-            console.log('- Actions border:', getComputedStyle(taskActions).border);
-            console.log('- Actions shadow:', getComputedStyle(taskActions).boxShadow);
-            
-            console.log('Testing smooth reveal animation...');
-            firstContainer.classList.add('swiped');
-            
-            setTimeout(() => {
-              const transform = getComputedStyle(taskContent).transform;
-              console.log('Smooth transform:', transform);
+            if (taskActions && taskContent) {
+              const actionsIndex = children.indexOf(taskActions);
+              const contentIndex = children.indexOf(taskContent);
               
-              const rect = editBtn.getBoundingClientRect();
-              console.log('Button integration:', { 
-                seamless: rect.width === 80 || rect.width === 70,
-                accessible: rect.height >= 44,
-                positioned: rect.right > rect.left
-              });
+              console.log('Layer order analysis:');
+              console.log('- Actions index:', actionsIndex, '(should be 0 - first/behind)');
+              console.log('- Content index:', contentIndex, '(should be 1 - second/on top)');
               
-              console.log('Testing smooth snap-back...');
-              firstContainer.classList.remove('swiped');
+              const isCorrectOrder = actionsIndex < contentIndex;
+              console.log('Correct layering:', isCorrectOrder ? '✅ YES' : '❌ NO');
+              
+              // Test visual layering
+              console.log('Testing swipe reveal...');
+              firstContainer.classList.add('swiped');
               
               setTimeout(() => {
-                const finalTransform = getComputedStyle(taskContent).transform;
-                console.log('Final position:', finalTransform);
-                console.log('✅ Polished swipe verified - buttery smooth & integrated');
+                console.log('Button should now be visible behind the slid card');
+                setTimeout(() => {
+                  firstContainer.classList.remove('swiped');
+                  console.log('✅ DOM layering test complete');
+                }, 1000);
               }, 300);
-            }, 300);
+            }
           } else {
             console.log('No task containers found');
           }
