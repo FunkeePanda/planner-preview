@@ -56,16 +56,14 @@
       .fab:active{ transform: translateY(1px); }
       .fab:focus-visible{ outline:2px solid rgba(255,255,255,.9); outline-offset:2px; border-radius:3px; }
 
-      /* Enhanced Swipe-to-edit with seamless integration */
+      /* Enhanced Swipe-to-edit with clean single card */
       .task-swipe-container {
         position: relative;
         overflow: hidden;
         border-radius: 12px;
         /* Ensure consistent height for smooth animations */
         min-height: 60px;
-        /* Create seamless background for integrated appearance */
-        background: rgba(255,255,255,.06);
-        border: 1px solid rgba(255,255,255,.12);
+        /* No background - let task content be the only visible card */
       }
       
       .task-content {
@@ -78,13 +76,12 @@
         border-radius: 12px;
         transition: transform 0.25s cubic-bezier(0.2, 0.0, 0.2, 1);
         position: relative;
-        z-index: 10; /* Card definitely on top */
+        z-index: 100; /* Much higher z-index to ensure it's on top */
         /* Prevent content from becoming transparent during swipe */
         will-change: transform;
         backface-visibility: hidden;
         /* Ensure card covers the button area completely */
         width: 100%;
-        /* Remove margin to ensure flush alignment */
         margin: 0;
       }
       
@@ -98,17 +95,14 @@
         align-items: center;
         justify-content: center;
         background: linear-gradient(135deg, rgba(255, 165, 0, 0.95), rgba(255, 140, 0, 0.95));
-        /* Remove rounded corners on left to create seamless integration */
         border-radius: 0 12px 12px 0;
-        z-index: 1; /* Button definitely behind card */
-        /* Always visible and in place - no transitions */
+        z-index: 1; /* Much lower z-index - definitely behind card */
         opacity: 1;
         transform: translateX(0);
-        /* Integrate with container border */
+        /* Simple border and shadow */
         border: 1px solid rgba(255,255,255,.12);
-        border-left: none; /* Seamless connection */
-        /* Add subtle inset shadow for embedded appearance */
-        box-shadow: inset 2px 0 4px rgba(0, 0, 0, 0.1), -2px 0 8px rgba(255, 165, 0, 0.2);
+        border-left: none;
+        box-shadow: -2px 0 8px rgba(255, 165, 0, 0.3);
       }
       
       .edit-btn {
@@ -149,7 +143,7 @@
       
       /* Enhanced shadow when button is revealed */
       .task-swipe-container.swiped .task-actions {
-        box-shadow: inset 2px 0 4px rgba(0, 0, 0, 0.15), -2px 0 12px rgba(255, 165, 0, 0.4);
+        box-shadow: -2px 0 12px rgba(255, 165, 0, 0.4);
       }
       
       /* Removed problematic snap-back animation that caused overflow */
@@ -329,8 +323,8 @@
     <main>
       <section id="tab-today">
         <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.8-polished</h2>
-          <div class="muted" style="margin-bottom:14px">Polished swipe animation with buttery smooth physics and seamless visual integration.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.9-clean</h2>
+          <div class="muted" style="margin-bottom:14px">Fixed double card stacking and button layering - clean single card with button behind.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -347,7 +341,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.8-polished — active:0 done:0
+              build: STEP-1.9-clean — active:0 done:0
             </footer>
         </div>
       </section>
@@ -439,7 +433,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.8-polished
+      build: STEP-1.9-clean
     </div>
 
     <script>
@@ -1412,7 +1406,7 @@
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.8-polished — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.9-clean — active:${activeCount} done:${doneCount}`;
           }
         }
 
