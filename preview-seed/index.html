@@ -408,8 +408,8 @@
     <main>
       <section id="tab-today">
         <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.40-fix-timer-resurrection</h2>
-          <div class="muted" style="margin-bottom:14px">Fixed timer system resurrection bug - timer updates no longer restore deleted tasks from stale closures.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.41-automated-test</h2>
+          <div class="muted" style="margin-bottom:14px">Added automated resurrection test - run testResurrection() in console to test the exact bug scenario.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -426,7 +426,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.40-fix-timer-resurrection — active:0 done:0
+              build: STEP-1.41-automated-test — active:0 done:0
             </footer>
         </div>
       </section>
@@ -534,7 +534,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.40-fix-timer-resurrection
+      build: STEP-1.41-automated-test
     </div>
 
     <script>
@@ -2186,7 +2186,7 @@
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.40-fix-timer-resurrection — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.41-automated-test — active:${activeCount} done:${doneCount}`;
           }
         }
 
@@ -2614,6 +2614,91 @@
           console.log('2. Mobile touch events not supporting native drag');
           console.log('3. Event listeners not properly attached');
         };
+        
+        // Test resurrection bug - automated test
+        window.testResurrection = function() {
+          console.log('🧪 === AUTOMATED RESURRECTION TEST ===');
+          console.log('🧪 STEP 1: Creating test task...');
+          
+          // Step 1: Create a task
+          const testTask = {
+            id: 'test-resurrection-' + Date.now(),
+            title: 'Test Task for Deletion',
+            note: '',
+            minutes: undefined,
+            tag: '',
+            completed: false,
+            sortOrder: Date.now()
+          };
+          
+          addTask(testTask);
+          console.log('🧪 Task created:', testTask.id, testTask.title);
+          
+          setTimeout(() => {
+            console.log('🧪 STEP 2: Deleting the task...');
+            
+            // Step 2: Delete the task
+            const taskElement = document.querySelector(`[data-task-id="${testTask.id}"]`);
+            if (taskElement) {
+              console.log('🧪 Found task element, simulating deletion...');
+              
+              // Simulate the deletion process
+              taskToDelete = testTask.id;
+              confirmDeleteTask();
+              
+              setTimeout(() => {
+                console.log('🧪 STEP 3: Creating new task after deletion...');
+                
+                // Step 3: Create a new task
+                const newTask = {
+                  id: 'new-task-after-deletion-' + Date.now(),
+                  title: 'New Task After Deletion',
+                  note: '',
+                  minutes: undefined,
+                  tag: '',
+                  completed: false,
+                  sortOrder: Date.now() + 1000
+                };
+                
+                addTask(newTask);
+                console.log('🧪 New task created:', newTask.id, newTask.title);
+                
+                setTimeout(() => {
+                  console.log('🧪 STEP 4: Checking for resurrection...');
+                  
+                  // Step 4: Check if old task resurrected
+                  const allTasks = getActive().concat(getDone());
+                  const resurrectedTask = allTasks.find(t => t.id === testTask.id);
+                  const newTaskExists = allTasks.find(t => t.id === newTask.id);
+                  
+                  console.log('🧪 === RESULTS ===');
+                  console.log('🧪 Total tasks in state:', allTasks.length);
+                  console.log('🧪 Task IDs:', allTasks.map(t => t.id));
+                  console.log('🧪 Task titles:', allTasks.map(t => t.title));
+                  console.log('🧪 Deleted task resurrected?', resurrectedTask ? '❌ YES (BUG!)' : '✅ NO (GOOD)');
+                  console.log('🧪 New task exists?', newTaskExists ? '✅ YES (GOOD)' : '❌ NO (BUG!)');
+                  
+                  if (resurrectedTask) {
+                    console.log('🧪 ❌ RESURRECTION BUG DETECTED!');
+                    console.log('🧪 Resurrected task:', resurrectedTask);
+                  } else {
+                    console.log('🧪 ✅ NO RESURRECTION - BUG FIXED!');
+                  }
+                  
+                  // Check DOM as well
+                  const domElements = document.querySelectorAll('.task-swipe-container');
+                  console.log('🧪 DOM elements count:', domElements.length);
+                  domElements.forEach((el, i) => {
+                    console.log(`🧪 DOM Task ${i+1}:`, el.dataset.taskId, el.querySelector('[style*="font-weight:600"]')?.textContent);
+                  });
+                  
+                }, 1000); // Wait for new task to be added
+              }, 2000); // Wait for deletion animation
+            } else {
+              console.log('🧪 ❌ Could not find task element to delete');
+            }
+          }, 500); // Wait for first task to be added
+        };
 
         // Expose functions globally
         window.toggleComplete = toggleComplete;
@@ -2638,6 +2723,7 @@
         console.log('📊 Debug footer shows live active/done counts');
         console.log('🔄 Drag and drop reordering enabled');
         console.log('🔍 Run testDragDrop() to debug drag and drop');
+        console.log('🧪 Run testResurrection() to test deletion bug automatically!');
       })();
     </script>
   </body>
