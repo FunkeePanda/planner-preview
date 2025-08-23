@@ -96,7 +96,8 @@
         align-items: center;
         gap: 12px;
         padding: 12px;
-        background: rgba(255,255,255,.06);
+        /* Solid opaque background to completely hide edit button */
+        background: rgba(30, 35, 50, 1); /* Dark solid background matching theme */
         border: 1px solid rgba(255,255,255,.12);
         border-radius: 12px;
         transition: transform 0.25s cubic-bezier(0.2, 0.0, 0.2, 1);
@@ -340,8 +341,8 @@
     <main>
       <section id="tab-today">
         <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.16-invisible</h2>
-          <div class="muted" style="margin-bottom:14px">Removed all visual artifacts - button completely transparent until revealed by swipe.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.17-opaque</h2>
+          <div class="muted" style="margin-bottom:14px">Fixed transparency issue - task cards now have solid opaque background to fully hide edit button.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -358,7 +359,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.16-invisible — active:0 done:0
+              build: STEP-1.17-opaque — active:0 done:0
             </footer>
         </div>
       </section>
@@ -450,7 +451,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.16-invisible
+      build: STEP-1.17-opaque
     </div>
 
     <script>
@@ -1423,7 +1424,7 @@
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.16-invisible — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.17-opaque — active:${activeCount} done:${doneCount}`;
           }
         }
 
@@ -1592,6 +1593,56 @@
           }
         };
 
+        // Test opaque background hiding
+        window.testOpaqueHiding = function() {
+          console.log('🧪 Testing opaque background hiding...');
+          const containers = document.querySelectorAll('.task-swipe-container');
+          if (containers.length > 0) {
+            const firstContainer = containers[0];
+            const taskContent = firstContainer.querySelector('.task-content');
+            const taskActions = firstContainer.querySelector('.task-actions');
+            
+            if (taskActions && taskContent) {
+              const contentStyle = getComputedStyle(taskContent);
+              const actionsStyle = getComputedStyle(taskActions);
+              
+              console.log('=== BACKGROUND OPACITY TEST ===');
+              console.log('Task content background:', contentStyle.backgroundColor);
+              console.log('Task actions background:', actionsStyle.backgroundColor);
+              
+              // Check if background is opaque (alpha = 1)
+              const bgColor = contentStyle.backgroundColor;
+              const isOpaque = bgColor.includes('rgba') ? 
+                bgColor.match(/rgba\([^,]+,[^,]+,[^,]+,\s*([^)]+)\)/)?.[1] === '1' :
+                !bgColor.includes('rgba'); // rgb() is always opaque
+              
+              console.log('Task content is opaque:', isOpaque ? '✅ YES' : '❌ NO');
+              
+              // Check positioning
+              const contentRect = taskContent.getBoundingClientRect();
+              const actionsRect = taskActions.getBoundingClientRect();
+              
+              console.log('=== COVERAGE TEST ===');
+              console.log('Content area:', {
+                left: contentRect.left,
+                right: contentRect.right,
+                width: contentRect.width
+              });
+              console.log('Actions area:', {
+                left: actionsRect.left,
+                right: actionsRect.right,
+                width: actionsRect.width
+              });
+              
+              const fullyCovered = contentRect.left <= actionsRect.left && 
+                                 contentRect.right >= actionsRect.right;
+              console.log('Actions fully covered:', fullyCovered ? '✅ YES' : '❌ NO');
+              
+              console.log('✅ Opaque hiding test complete');
+            }
+          }
+        };
+        
         // Test for visual artifacts and placeholders
         window.testVisualArtifacts = function() {
           console.log('🧪 Testing for visual artifacts and placeholders...');
