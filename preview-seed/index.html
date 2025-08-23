@@ -408,8 +408,8 @@
     <main>
       <section id="tab-today">
         <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.31-fix-drop-zones</h2>
-          <div class="muted" style="margin-bottom:14px">Fixed drop zones - cards now move out of the way to show where you can drop during drag.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.32-fix-gesture-conflict</h2>
+          <div class="muted" style="margin-bottom:14px">Fixed gesture conflicts - drag and swipe are now mutually exclusive based on movement direction.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -426,7 +426,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.31-fix-drop-zones — active:0 done:0
+              build: STEP-1.32-fix-gesture-conflict — active:0 done:0
             </footer>
         </div>
       </section>
@@ -534,7 +534,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.31-fix-drop-zones
+      build: STEP-1.32-fix-gesture-conflict
     </div>
 
     <script>
@@ -809,6 +809,7 @@
       let draggedTaskId = null;
       let dragPlaceholder = null;
       let isDragMode = false;
+      let isGestureDecided = false; // Track if we've decided between drag and swipe
       let dragStartPos = { x: 0, y: 0 };
       let dragCurrentPos = { x: 0, y: 0 };
       let dragOffset = { x: 0, y: 0 };
@@ -892,12 +893,27 @@
         dragCurrentPos.x = e.clientX;
         dragCurrentPos.y = e.clientY;
         
-        // Check if we've moved enough to start dragging
+        // Check if we've moved enough to determine gesture intent
         const deltaX = Math.abs(dragCurrentPos.x - dragStartPos.x);
         const deltaY = Math.abs(dragCurrentPos.y - dragStartPos.y);
+        const totalMovement = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
         
-        if (!isDragMode && (deltaX > dragThreshold || deltaY > dragThreshold)) {
-          startDragMode();
+        if (!isDragMode && !isGestureDecided && totalMovement > dragThreshold) {
+          // Determine if this is more horizontal (swipe) or vertical (drag) movement
+          const isMoreHorizontal = deltaX > deltaY * 1.5; // Favor horizontal for swipe
+          
+          isGestureDecided = true; // Lock in the gesture type
+          
+          if (isMoreHorizontal) {
+            // This looks like a swipe gesture, cancel drag
+            console.log('🔄 DevLog: Horizontal movement detected, canceling drag for swipe');
+            cancelDragForSwipe();
+            return;
+          } else {
+            // This looks like a drag gesture, start drag mode
+            console.log('🔄 DevLog: Vertical/mixed movement detected, starting drag');
+            startDragMode();
+          }
         }
         
         if (isDragMode) {
@@ -913,18 +929,55 @@
         dragCurrentPos.x = touch.clientX;
         dragCurrentPos.y = touch.clientY;
         
-        // Check if we've moved enough to start dragging
+        // Check if we've moved enough to determine gesture intent
         const deltaX = Math.abs(dragCurrentPos.x - dragStartPos.x);
         const deltaY = Math.abs(dragCurrentPos.y - dragStartPos.y);
+        const totalMovement = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
         
-        if (!isDragMode && (deltaX > dragThreshold || deltaY > dragThreshold)) {
-          startDragMode();
+        if (!isDragMode && !isGestureDecided && totalMovement > dragThreshold) {
+          // Determine if this is more horizontal (swipe) or vertical (drag) movement
+          const isMoreHorizontal = deltaX > deltaY * 1.5; // Favor horizontal for swipe
+          
+          isGestureDecided = true; // Lock in the gesture type
+          
+          if (isMoreHorizontal) {
+            // This looks like a swipe gesture, cancel drag
+            console.log('🔄 DevLog: Horizontal touch movement detected, canceling drag for swipe');
+            cancelDragForSwipe();
+            return;
+          } else {
+            // This looks like a drag gesture, start drag mode
+            console.log('🔄 DevLog: Vertical/mixed touch movement detected, starting drag');
+            startDragMode();
+          }
         }
         
         if (isDragMode) {
           updateDragPosition(touch.clientX, touch.clientY);
           updateDropTarget(touch.clientX, touch.clientY);
           e.preventDefault(); // Prevent scrolling during drag
+        }
+      }
+      
+      function cancelDragForSwipe() {
+        // Cancel the drag operation and let swipe take over
+        if (draggedElement) {
+          console.log('🔄 DevLog: Canceling drag, allowing swipe to proceed');
+          
+          // Clean up drag state
+          draggedElement = null;
+          draggedTaskId = null;
+          isDragMode = false;
+          isGestureDecided = false; // Reset gesture decision
+          dragStartPos = { x: 0, y: 0 };
+          dragCurrentPos = { x: 0, y: 0 };
+          dragOffset = { x: 0, y: 0 };
+          
+          // Remove any placeholder
+          if (dragPlaceholder && dragPlaceholder.parentNode) {
+            dragPlaceholder.remove();
+            dragPlaceholder = null;
+          }
         }
       }
       
@@ -1109,6 +1162,7 @@
         draggedElement = null;
         draggedTaskId = null;
         isDragMode = false;
+        isGestureDecided = false; // Reset gesture decision
         dragStartPos = { x: 0, y: 0 };
         dragCurrentPos = { x: 0, y: 0 };
         dragOffset = { x: 0, y: 0 };
@@ -1193,11 +1247,13 @@
           if (container.draggable) {
             // Set a delay to see if drag starts first
             setTimeout(() => {
-              // Only start swipe if no drag operation started
-              if (!isDragMode && !container.classList.contains('dragging')) {
+              // Only start swipe if no drag operation started and we haven't been canceled
+              if (!isDragMode && !container.classList.contains('dragging') && !draggedElement) {
                 startSwipeGesture(e);
+              } else {
+                console.log('🔄 DevLog: Swipe canceled - drag operation in progress');
               }
-            }, 100); // Shorter delay for better responsiveness
+            }, 50); // Even shorter delay for better gesture detection
             return;
           }
           
@@ -2008,7 +2064,7 @@
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.31-fix-drop-zones — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.32-fix-gesture-conflict — active:${activeCount} done:${doneCount}`;
           }
         }
 
