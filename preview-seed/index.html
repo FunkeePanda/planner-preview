@@ -198,10 +198,12 @@
       }
       
       .task-swipe-container.dragging {
-        opacity: 0.5;
-        transform: rotate(5deg) scale(1.05);
+        opacity: 0.9;
+        transform: rotate(2deg) scale(1.02);
         z-index: 1000;
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        box-shadow: 0 12px 35px rgba(0, 0, 0, 0.4);
+        border: 2px solid rgba(108, 99, 255, 0.5);
+        transition: none !important; /* Disable transitions during drag */
       }
       
       .task-swipe-container.drag-over {
@@ -406,8 +408,8 @@
     <main>
       <section id="tab-today">
         <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.29-custom-drag</h2>
-          <div class="muted" style="margin-bottom:14px">Custom drag-and-drop implementation - works on both desktop and mobile with touch support.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.30-smooth-drag</h2>
+          <div class="muted" style="margin-bottom:14px">Smooth drag-and-drop - card stays visible and follows finger/cursor perfectly during drag.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -424,7 +426,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.29-custom-drag — active:0 done:0
+              build: STEP-1.30-smooth-drag — active:0 done:0
             </footer>
         </div>
       </section>
@@ -532,7 +534,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.29-custom-drag
+      build: STEP-1.30-smooth-drag
     </div>
 
     <script>
@@ -932,12 +934,32 @@
         console.log('🔥 DevLog: Starting drag mode for task:', draggedTaskId);
         isDragMode = true;
         
-        // Add visual feedback
+        // Store original styles to restore later
+        const originalStyles = {
+          position: draggedElement.style.position,
+          zIndex: draggedElement.style.zIndex,
+          width: draggedElement.style.width,
+          height: draggedElement.style.height,
+          transform: draggedElement.style.transform,
+          transition: draggedElement.style.transition
+        };
+        draggedElement._originalStyles = originalStyles;
+        
+        // Get current dimensions before changing position
+        const rect = draggedElement.getBoundingClientRect();
+        
+        // Add visual feedback - keep the card visible and elevated
         draggedElement.classList.add('dragging');
         draggedElement.style.position = 'fixed';
         draggedElement.style.zIndex = '1000';
-        draggedElement.style.pointerEvents = 'none';
-        draggedElement.style.width = draggedElement.offsetWidth + 'px';
+        draggedElement.style.width = rect.width + 'px';
+        draggedElement.style.height = rect.height + 'px';
+        draggedElement.style.transition = 'none'; // Disable transitions during drag
+        draggedElement.style.pointerEvents = 'auto'; // Keep interactions enabled
+        
+        // Position the card at current location initially
+        draggedElement.style.left = rect.left + 'px';
+        draggedElement.style.top = rect.top + 'px';
         
         // Haptic feedback
         if (navigator.vibrate) {
@@ -948,7 +970,8 @@
         const placeholder = document.createElement('div');
         placeholder.className = 'drag-placeholder';
         placeholder.innerHTML = 'Drop here';
-        placeholder.style.height = draggedElement.offsetHeight + 'px';
+        placeholder.style.height = rect.height + 'px';
+        placeholder.style.margin = getComputedStyle(draggedElement).margin;
         draggedElement.parentNode.insertBefore(placeholder, draggedElement);
         dragPlaceholder = placeholder;
       }
@@ -956,8 +979,16 @@
       function updateDragPosition(clientX, clientY) {
         if (!draggedElement || !isDragMode) return;
         
-        draggedElement.style.left = (clientX - dragOffset.x) + 'px';
-        draggedElement.style.top = (clientY - dragOffset.y) + 'px';
+        // Update position smoothly - card follows finger/cursor
+        const newLeft = clientX - dragOffset.x;
+        const newTop = clientY - dragOffset.y;
+        
+        // Use transform for better performance
+        draggedElement.style.transform = `translate(${newLeft - parseFloat(draggedElement.style.left)}px, ${newTop - parseFloat(draggedElement.style.top)}px)`;
+        
+        // Also update actual position for accurate calculations
+        draggedElement.style.left = newLeft + 'px';
+        draggedElement.style.top = newTop + 'px';
       }
       
       function updateDropTarget(clientX, clientY) {
@@ -967,28 +998,29 @@
         const elementUnder = document.elementFromPoint(clientX, clientY);
         const taskCard = elementUnder?.closest('.task-swipe-container');
         
-        if (taskCard && taskCard !== draggedElement && taskCard.draggable) {
-          // Remove existing placeholder
-          if (dragPlaceholder) {
-            dragPlaceholder.remove();
-          }
-          
-          // Create new placeholder
-          dragPlaceholder = document.createElement('div');
-          dragPlaceholder.className = 'drag-placeholder';
-          dragPlaceholder.innerHTML = 'Drop here';
-          dragPlaceholder.style.height = draggedElement.offsetHeight + 'px';
-          
-          // Determine if we should insert before or after
-          const rect = taskCard.getBoundingClientRect();
-          const insertAfter = clientY > rect.top + rect.height / 2;
-          
-          if (insertAfter) {
-            taskCard.parentNode.insertBefore(dragPlaceholder, taskCard.nextSibling);
-          } else {
-            taskCard.parentNode.insertBefore(dragPlaceholder, taskCard);
-          }
-        }
+                 if (taskCard && taskCard !== draggedElement && taskCard.draggable) {
+           // Remove existing placeholder
+           if (dragPlaceholder && dragPlaceholder.parentNode) {
+             dragPlaceholder.remove();
+           }
+           
+           // Create new placeholder
+           dragPlaceholder = document.createElement('div');
+           dragPlaceholder.className = 'drag-placeholder';
+           dragPlaceholder.innerHTML = '⬇ Drop here';
+           dragPlaceholder.style.height = (draggedElement.getBoundingClientRect().height) + 'px';
+           dragPlaceholder.style.margin = getComputedStyle(draggedElement).margin;
+           
+           // Determine if we should insert before or after
+           const rect = taskCard.getBoundingClientRect();
+           const insertAfter = clientY > rect.top + rect.height / 2;
+           
+           if (insertAfter) {
+             taskCard.parentNode.insertBefore(dragPlaceholder, taskCard.nextSibling);
+           } else {
+             taskCard.parentNode.insertBefore(dragPlaceholder, taskCard);
+           }
+         }
       }
       
       function handleDragEnd(e) {
@@ -1011,12 +1043,32 @@
         // Clean up
         if (draggedElement) {
           draggedElement.classList.remove('dragging');
-          draggedElement.style.position = '';
-          draggedElement.style.zIndex = '';
-          draggedElement.style.pointerEvents = '';
-          draggedElement.style.width = '';
-          draggedElement.style.left = '';
-          draggedElement.style.top = '';
+          
+          // Restore original styles
+          const originalStyles = draggedElement._originalStyles;
+          if (originalStyles) {
+            draggedElement.style.position = originalStyles.position;
+            draggedElement.style.zIndex = originalStyles.zIndex;
+            draggedElement.style.width = originalStyles.width;
+            draggedElement.style.height = originalStyles.height;
+            draggedElement.style.transform = originalStyles.transform;
+            draggedElement.style.transition = originalStyles.transition;
+            draggedElement.style.left = '';
+            draggedElement.style.top = '';
+            draggedElement.style.pointerEvents = '';
+            delete draggedElement._originalStyles;
+          } else {
+            // Fallback cleanup
+            draggedElement.style.position = '';
+            draggedElement.style.zIndex = '';
+            draggedElement.style.width = '';
+            draggedElement.style.height = '';
+            draggedElement.style.transform = '';
+            draggedElement.style.transition = '';
+            draggedElement.style.left = '';
+            draggedElement.style.top = '';
+            draggedElement.style.pointerEvents = '';
+          }
         }
         
         if (dragPlaceholder) {
@@ -1927,7 +1979,7 @@
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.29-custom-drag — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.30-smooth-drag — active:${activeCount} done:${doneCount}`;
           }
         }
 
