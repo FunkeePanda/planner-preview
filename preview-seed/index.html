@@ -368,8 +368,8 @@
     <main>
       <section id="tab-today">
         <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.25-delete-confirmation</h2>
-          <div class="muted" style="margin-bottom:14px">Added custom delete confirmation modal - styled dialog with "Cancel" and red "Delete" buttons.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.26-smooth-deletion</h2>
+          <div class="muted" style="margin-bottom:14px">Fixed deletion animation - tasks now collapse smoothly with no empty space or rendering conflicts.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -386,7 +386,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.25-delete-confirmation — active:0 done:0
+              build: STEP-1.26-smooth-deletion — active:0 done:0
             </footer>
         </div>
       </section>
@@ -494,7 +494,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.25-delete-confirmation
+      build: STEP-1.26-smooth-deletion
     </div>
 
     <script>
@@ -1094,15 +1094,39 @@
         
         const taskElement = document.querySelector(`[data-task-id="${taskToDelete}"]`);
         if (taskElement) {
+          // Mark element as deleting to prevent re-render conflicts
+          taskElement.dataset.deleting = 'true';
+          
+          // Get the current height for smooth collapse animation
+          const currentHeight = taskElement.offsetHeight;
+          const currentMargin = parseInt(getComputedStyle(taskElement).marginBottom) || 10;
+          
+          // Set initial height explicitly
+          taskElement.style.height = currentHeight + 'px';
+          taskElement.style.marginBottom = currentMargin + 'px';
+          
+          // Force reflow
+          taskElement.offsetHeight;
+          
           // Add deletion animation
-          taskElement.style.transition = 'transform 0.3s ease-out, opacity 0.3s ease-out';
+          taskElement.style.transition = 'transform 0.3s ease-out, opacity 0.3s ease-out, height 0.3s ease-out, margin 0.3s ease-out';
           taskElement.style.transform = 'translateX(-100%)';
           taskElement.style.opacity = '0';
+          taskElement.style.height = '0px';
+          taskElement.style.marginBottom = '0px';
+          taskElement.style.overflow = 'hidden';
           
-          // Remove from state after animation
+          // Remove from state after animation starts but before it completes
           setTimeout(() => {
             setTasks(prev => prev.filter(t => t.id !== taskToDelete));
             createToast('Task deleted');
+          }, 150);
+          
+          // Clean up the animated element after animation completes
+          setTimeout(() => {
+            if (taskElement.parentNode) {
+              taskElement.parentNode.removeChild(taskElement);
+            }
           }, 300);
         } else {
           // Fallback if element not found
@@ -1442,20 +1466,35 @@
 
           // Get existing cards to avoid destroying checkbox state
           const existingCards = new Map();
+          const deletingElements = [];
+          
           Array.from(todayList.children).forEach(card => {
             if (card.dataset.taskId) {
-              existingCards.set(card.dataset.taskId, card);
+              if (card.dataset.deleting === 'true') {
+                deletingElements.push({ element: card, parent: todayList });
+              } else {
+                existingCards.set(card.dataset.taskId, card);
+              }
             }
           });
           Array.from(completedList.children).forEach(card => {
             if (card.dataset.taskId) {
-              existingCards.set(card.dataset.taskId, card);
+              if (card.dataset.deleting === 'true') {
+                deletingElements.push({ element: card, parent: completedList });
+              } else {
+                existingCards.set(card.dataset.taskId, card);
+              }
             }
           });
 
-          // Clear containers
+          // Clear containers but preserve deleting elements
           todayList.innerHTML = '';
           completedList.innerHTML = '';
+          
+          // Re-append deleting elements to maintain animations
+          deletingElements.forEach(({ element, parent }) => {
+            parent.appendChild(element);
+          });
 
           // Render active tasks - reuse existing cards where possible
           active.forEach(task => {
@@ -1588,7 +1627,7 @@
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.25-delete-confirmation — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.26-smooth-deletion — active:${activeCount} done:${doneCount}`;
           }
         }
 
