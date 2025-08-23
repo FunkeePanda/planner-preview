@@ -170,6 +170,11 @@
         transform: translate3d(-120px, 0, 0);
       }
       
+      /* Keep card content fixed while dragging to avoid swipe jitter */
+      .task-swipe-container.dragging .task-content {
+        transform: none !important;
+      }
+      
       /* Enhanced shadow when button is revealed */
       .task-swipe-container.swiped .task-actions {
         box-shadow: -2px 0 12px rgba(255, 165, 0, 0.5);
@@ -408,8 +413,8 @@
     <main>
       <section id="tab-today">
                   <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.48-data-export-import</h2>
-          <div class="muted" style="margin-bottom:14px">Added data export/import in Settings. Export tasks to JSON and import back.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.49-drag-stability</h2>
+          <div class="muted" style="margin-bottom:14px">Stabilized drag: disables swipe and keeps the card fixed while dragging.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -426,7 +431,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.48-data-export-import — active:0 done:0
+              build: STEP-1.49-drag-stability — active:0 done:0
             </footer>
         </div>
       </section>
@@ -546,7 +551,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.48-data-export-import
+      build: STEP-1.49-drag-stability
     </div>
 
     <script>
@@ -1024,6 +1029,15 @@
         console.log('🔥 DevLog: Starting drag mode for task:', draggedTaskId);
         isDragMode = true;
         
+        // Clear any swipe state on the dragged card
+        try {
+          draggedElement.classList.remove('swiped');
+          const content = draggedElement.querySelector('.task-content');
+          if (content) {
+            content.style.transform = '';
+          }
+        } catch {}
+        
         // Store original styles to restore later
         const originalStyles = {
           position: draggedElement.style.position,
@@ -1250,6 +1264,7 @@
 
       // Enhanced swipe gesture detection with smooth physics
       function addSwipeGesture(container, content) {
+        let suppressSwipe = false; // Prevent swipe while dragging
         let startX = 0;
         let currentX = 0;
         let isDragging = false;
@@ -1279,8 +1294,8 @@
             return;
           }
           
-          // Don't start swipe if we're in active drag mode
-          if (isDragMode) {
+          // Don't start swipe if we're in active drag mode or swipe suppressed
+          if (isDragMode || suppressSwipe) {
             return;
           }
           
@@ -1289,7 +1304,7 @@
             // Set a delay to see if drag starts first
             setTimeout(() => {
               // Only start swipe if no drag operation started and gesture hasn't been decided
-              if (!isDragMode && !container.classList.contains('dragging') && !isGestureDecided) {
+              if (!isDragMode && !container.classList.contains('dragging') && !isGestureDecided && !suppressSwipe) {
                 startSwipeGesture(e);
               } else {
                 console.log('🔄 DevLog: Swipe canceled - drag operation in progress or gesture decided');
@@ -1490,6 +1505,23 @@
         };
         
         window.addEventListener('resize', handleResize, { passive: true });
+
+        // Listen for drag lifecycle to suppress swipe
+        document.addEventListener('dragstart', (evt) => {
+          const card = evt.target?.closest?.('.task-swipe-container');
+          if (card && card === container) {
+            suppressSwipe = true;
+            container.classList.remove('swiped');
+            content.style.transform = '';
+          }
+        }, true);
+
+        document.addEventListener('dragend', (evt) => {
+          const card = evt.target?.closest?.('.task-swipe-container');
+          if (card && card === container) {
+            suppressSwipe = false;
+          }
+        }, true);
       }
 
       // Edit modal functionality
@@ -2226,7 +2258,7 @@
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.48-data-export-import — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.49-drag-stability — active:${activeCount} done:${doneCount}`;
           }
         }
 
