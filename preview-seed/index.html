@@ -56,6 +56,67 @@
       .fab:active{ transform: translateY(1px); }
       .fab:focus-visible{ outline:2px solid rgba(255,255,255,.9); outline-offset:2px; border-radius:3px; }
 
+      /* Swipe-to-edit styles */
+      .task-swipe-container {
+        position: relative;
+        overflow: hidden;
+        border-radius: 12px;
+      }
+      
+      .task-content {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px;
+        background: rgba(255,255,255,.06);
+        border: 1px solid rgba(255,255,255,.12);
+        border-radius: 12px;
+        transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        position: relative;
+        z-index: 2;
+      }
+      
+      .task-actions {
+        position: absolute;
+        right: 0;
+        top: 0;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        background: rgba(255, 165, 0, 0.9);
+        border-radius: 0 12px 12px 0;
+        z-index: 1;
+        transform: translateX(100%);
+        transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      }
+      
+      .edit-btn {
+        padding: 0 20px;
+        background: none;
+        border: none;
+        color: white;
+        font-size: 18px;
+        cursor: pointer;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 60px;
+      }
+      
+      .edit-btn:active {
+        background: rgba(255, 255, 255, 0.1);
+      }
+      
+      /* Swipe states */
+      .task-swipe-container.swiped .task-content {
+        transform: translateX(-60px);
+      }
+      
+      .task-swipe-container.swiped .task-actions {
+        transform: translateX(0);
+      }
+
       .modal-backdrop{
         position:fixed; top:0; left:0; right:0; bottom:0;
         background:rgba(0,0,0,.6); backdrop-filter:blur(4px);
@@ -210,8 +271,8 @@
     <main>
       <section id="tab-today">
         <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.3e</h2>
-          <div class="muted" style="margin-bottom:14px">Clear completed now removes tasks instead of reactivating them.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.4-swipe</h2>
+          <div class="muted" style="margin-bottom:14px">Swipe left on tasks to reveal edit button. Tap to edit title and duration.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -228,7 +289,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.3e — active:0 done:0
+              build: STEP-1.4-swipe — active:0 done:0
             </footer>
         </div>
       </section>
@@ -285,6 +346,28 @@
       </div>
     </div>
 
+    <!-- Edit Task Modal -->
+    <div id="edit-modal-backdrop" class="modal-backdrop" hidden>
+      <div class="modal">
+        <h3>Edit Task</h3>
+        <form id="edit-task-form">
+          <input id="edit-task-title" type="text" placeholder="Task name" required />
+          <select id="edit-task-duration">
+            <option value="">None</option>
+            <option value="5">5 minutes</option>
+            <option value="15">15 minutes</option>
+            <option value="25">25 minutes</option>
+            <option value="45">45 minutes</option>
+          </select>
+          <input id="edit-task-tag" type="text" placeholder="Tag or area (optional)" />
+        </form>
+        <div class="modal-actions">
+          <button id="edit-modal-cancel" class="btn">Cancel</button>
+          <button id="edit-modal-save" class="btn">Save Changes</button>
+        </div>
+      </div>
+    </div>
+
     <div class="tab-bar">
       <button class="tab-btn" data-tab="today" aria-selected="true">Today</button>
       <button class="tab-btn" data-tab="week" aria-selected="false">Week</button>
@@ -298,7 +381,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.3e
+      build: STEP-1.4-swipe
     </div>
 
     <script>
@@ -450,12 +533,17 @@
         }, 1500);
       }
 
-      // Task creation helper
+      // Task creation helper with swipe-to-edit support
       function createTaskCard(task) {
-        const card = document.createElement('div');
-        card.style.cssText = 'display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)';
-        card.dataset.taskId = task.id;
-        card.dataset.testid = `task-row-${task.id}`;
+        // Create swipe container
+        const swipeContainer = document.createElement('div');
+        swipeContainer.className = 'task-swipe-container';
+        swipeContainer.dataset.taskId = task.id;
+        swipeContainer.dataset.testid = `task-row-${task.id}`;
+        
+        // Create task content
+        const taskContent = document.createElement('div');
+        taskContent.className = 'task-content';
         
         const tagLine = task.tag ? `<div class="muted" style="font-size:13px">${task.tag}</div>` : '';
         
@@ -504,22 +592,215 @@
           ${resetLink}
         `;
         
-        // Append checkbox and content
-        card.appendChild(checkbox);
+        // Append checkbox and content to task content
+        taskContent.appendChild(checkbox);
         while (contentDiv.firstChild) {
-          card.appendChild(contentDiv.firstChild);
+          taskContent.appendChild(contentDiv.firstChild);
         }
         
+        // Create edit actions
+        const taskActions = document.createElement('div');
+        taskActions.className = 'task-actions';
+        
+        const editBtn = document.createElement('button');
+        editBtn.className = 'edit-btn';
+        editBtn.innerHTML = '✏️';
+        editBtn.setAttribute('aria-label', 'Edit task');
+        editBtn.addEventListener('click', function() {
+          openEditModal(task);
+        });
+        
+        taskActions.appendChild(editBtn);
+        
+        // Add swipe gesture support
+        addSwipeGesture(swipeContainer, taskContent);
+        
+        // Append content and actions to swipe container
+        swipeContainer.appendChild(taskContent);
+        swipeContainer.appendChild(taskActions);
+        
         if (task.completed) {
-          card.classList.add('task--done');
+          taskContent.classList.add('task--done');
         }
         
         // Add ticking animation if timer is running
         if (task.timer && task.timer.status === 'running') {
-          card.classList.add('task-ticking');
+          taskContent.classList.add('task-ticking');
         }
         
-        return card;
+        return swipeContainer;
+      }
+
+      // Swipe gesture detection
+      function addSwipeGesture(container, content) {
+        let startX = 0;
+        let currentX = 0;
+        let isDragging = false;
+        let startTime = 0;
+        
+        function handleStart(e) {
+          startX = e.touches ? e.touches[0].clientX : e.clientX;
+          currentX = startX;
+          isDragging = true;
+          startTime = Date.now();
+          content.style.transition = 'none';
+        }
+        
+        function handleMove(e) {
+          if (!isDragging) return;
+          
+          e.preventDefault();
+          currentX = e.touches ? e.touches[0].clientX : e.clientX;
+          const deltaX = currentX - startX;
+          
+          // Only allow left swipe (negative delta)
+          if (deltaX < 0) {
+            const translateX = Math.max(deltaX, -60);
+            content.style.transform = `translateX(${translateX}px)`;
+            
+            // Update actions visibility
+            const actions = container.querySelector('.task-actions');
+            if (actions) {
+              const actionTranslate = Math.min(100 + (deltaX * 1.67), 100);
+              actions.style.transform = `translateX(${actionTranslate}%)`;
+            }
+          }
+        }
+        
+        function handleEnd(e) {
+          if (!isDragging) return;
+          isDragging = false;
+          
+          const deltaX = currentX - startX;
+          const deltaTime = Date.now() - startTime;
+          const velocity = Math.abs(deltaX) / deltaTime;
+          
+          // Determine if swipe should complete
+          const shouldReveal = deltaX < -30 || (velocity > 0.5 && deltaX < -10);
+          
+          content.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+          
+          if (shouldReveal) {
+            container.classList.add('swiped');
+          } else {
+            container.classList.remove('swiped');
+          }
+          
+          // Reset inline styles to let CSS classes take over
+          setTimeout(() => {
+            content.style.transform = '';
+            const actions = container.querySelector('.task-actions');
+            if (actions) {
+              actions.style.transform = '';
+            }
+          }, 300);
+        }
+        
+        // Touch events
+        content.addEventListener('touchstart', handleStart, { passive: false });
+        content.addEventListener('touchmove', handleMove, { passive: false });
+        content.addEventListener('touchend', handleEnd);
+        
+        // Mouse events for desktop testing
+        content.addEventListener('mousedown', handleStart);
+        content.addEventListener('mousemove', handleMove);
+        content.addEventListener('mouseup', handleEnd);
+        content.addEventListener('mouseleave', handleEnd);
+        
+        // Close swipe when clicking elsewhere
+        document.addEventListener('click', function(e) {
+          if (!container.contains(e.target)) {
+            container.classList.remove('swiped');
+          }
+        });
+      }
+
+      // Edit modal functionality
+      let currentEditingTask = null;
+      
+      function openEditModal(task) {
+        currentEditingTask = task;
+        const editBackdrop = document.getElementById('edit-modal-backdrop');
+        const editTitle = document.getElementById('edit-task-title');
+        const editDuration = document.getElementById('edit-task-duration');
+        const editTag = document.getElementById('edit-task-tag');
+        
+        // Populate form with current task data
+        editTitle.value = task.title || '';
+        editDuration.value = task.minutes || '';
+        editTag.value = task.tag || '';
+        
+        editBackdrop.removeAttribute('hidden');
+        editTitle.focus();
+        
+        // Close any open swipe actions
+        document.querySelectorAll('.task-swipe-container.swiped').forEach(container => {
+          container.classList.remove('swiped');
+        });
+      }
+      
+      function closeEditModal() {
+        const editBackdrop = document.getElementById('edit-modal-backdrop');
+        editBackdrop.setAttribute('hidden', '');
+        currentEditingTask = null;
+      }
+      
+      function saveTaskEdit() {
+        if (!currentEditingTask) return;
+        
+        const editTitle = document.getElementById('edit-task-title');
+        const editDuration = document.getElementById('edit-task-duration');
+        const editTag = document.getElementById('edit-task-tag');
+        
+        // Validate title
+        if (!editTitle.value.trim()) {
+          editTitle.classList.add('shake');
+          editTitle.focus();
+          setTimeout(() => editTitle.classList.remove('shake'), 500);
+          return;
+        }
+        
+        // Update task
+        setTasks(prev => {
+          return prev.map(task => {
+            if (task.id === currentEditingTask.id) {
+              const updatedTask = {
+                ...task,
+                title: editTitle.value.trim(),
+                tag: editTag.value.trim() || undefined,
+              };
+              
+              // Handle duration changes
+              const newMinutes = editDuration.value ? parseInt(editDuration.value) : undefined;
+              if (newMinutes !== task.minutes) {
+                updatedTask.minutes = newMinutes;
+                // Reset timer if duration changed
+                if (task.timer) {
+                  updatedTask.timer = {
+                    totalSec: newMinutes ? newMinutes * 60 : 0,
+                    remainingSec: newMinutes ? newMinutes * 60 : 0,
+                    status: 'idle',
+                    updatedAt: Date.now()
+                  };
+                } else if (newMinutes) {
+                  updatedTask.timer = {
+                    totalSec: newMinutes * 60,
+                    remainingSec: newMinutes * 60,
+                    status: 'idle',
+                    updatedAt: Date.now()
+                  };
+                }
+              }
+              
+              console.log('DevLog: Task updated:', updatedTask.title);
+              return updatedTask;
+            }
+            return task;
+          });
+        });
+        
+        closeEditModal();
+        createToast('Task updated');
       }
 
       // Get task data from DOM card
@@ -892,9 +1173,13 @@
           updateDebugFooter(active.length, done.length);
         }
 
-        function updateCardFromTask(card, task) {
+        function updateCardFromTask(swipeContainer, task) {
+          // Get the task content div
+          const taskContent = swipeContainer.querySelector('.task-content');
+          if (!taskContent) return;
+          
           // Update checkbox state without destroying it
-          const checkbox = card.querySelector('input[data-role="toggle-done"]');
+          const checkbox = taskContent.querySelector('input[data-role="toggle-done"]');
           if (checkbox) {
             checkbox.checked = task.completed;
             checkbox.setAttribute('aria-label', `Mark ${task.title} ${task.completed ? 'incomplete' : 'complete'}`);
@@ -902,22 +1187,48 @@
 
           // Update visual state
           if (task.completed) {
-            card.classList.add('task--done');
+            taskContent.classList.add('task--done');
           } else {
-            card.classList.remove('task--done');
+            taskContent.classList.remove('task--done');
           }
 
           // Update ticking animation
           if (task.timer && task.timer.status === 'running') {
-            card.classList.add('task-ticking');
+            taskContent.classList.add('task-ticking');
           } else {
-            card.classList.remove('task-ticking');
+            taskContent.classList.remove('task-ticking');
+          }
+
+          // Update task title and tag
+          const titleElement = taskContent.querySelector('.task-title');
+          if (titleElement) {
+            titleElement.textContent = task.title;
+          }
+          
+          const tagElement = taskContent.querySelector('.muted');
+          if (task.tag) {
+            if (tagElement) {
+              tagElement.textContent = task.tag;
+            } else {
+              // Add tag element if it doesn't exist
+              const titleParent = titleElement?.parentElement;
+              if (titleParent) {
+                const newTagElement = document.createElement('div');
+                newTagElement.className = 'muted';
+                newTagElement.style.fontSize = '13px';
+                newTagElement.textContent = task.tag;
+                titleParent.appendChild(newTagElement);
+              }
+            }
+          } else if (tagElement) {
+            // Remove tag element if task has no tag
+            tagElement.remove();
           }
 
           // Update timer display and button text
-          const timerSpan = card.querySelector('span[style*="border-radius:999px"]');
-          const startBtn = card.querySelector('[data-role="timer-control"]');
-          const resetBtn = card.querySelector('[data-role="reset-timer"]');
+          const timerSpan = taskContent.querySelector('span[style*="border-radius:999px"]');
+          const startBtn = taskContent.querySelector('[data-role="timer-control"]');
+          const resetBtn = taskContent.querySelector('[data-role="reset-timer"]');
 
           if (task.timer && timerSpan) {
             timerSpan.textContent = formatTime(task.timer.remainingSec);
@@ -932,12 +1243,23 @@
               startBtn.textContent = 'Start';
             }
           }
+          
+          // Update edit button to have current task reference
+          const editBtn = swipeContainer.querySelector('.edit-btn');
+          if (editBtn) {
+            // Remove old listener and add new one with updated task
+            const newEditBtn = editBtn.cloneNode(true);
+            editBtn.parentNode.replaceChild(newEditBtn, editBtn);
+            newEditBtn.addEventListener('click', function() {
+              openEditModal(task);
+            });
+          }
         }
 
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.3e — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.4-swipe — active:${activeCount} done:${doneCount}`;
           }
         }
 
@@ -1011,6 +1333,26 @@
 
         clearBtn?.addEventListener('click', clearCompleted);
 
+        // Edit modal event listeners
+        const editBackdrop = document.getElementById('edit-modal-backdrop');
+        const editCancelBtn = document.getElementById('edit-modal-cancel');
+        const editSaveBtn = document.getElementById('edit-modal-save');
+        
+        editCancelBtn?.addEventListener('click', closeEditModal);
+        editSaveBtn?.addEventListener('click', saveTaskEdit);
+        
+        // Close edit modal on backdrop click
+        editBackdrop?.addEventListener('click', function(e) {
+          if (e.target === editBackdrop) closeEditModal();
+        });
+        
+        // Close edit modal on Escape key
+        document.addEventListener('keydown', function(e) {
+          if (e.key === 'Escape' && !editBackdrop?.hasAttribute('hidden')) {
+            closeEditModal();
+          }
+        });
+
         // Load tasks from storage on init (like useState initialization)
         function loadTasksFromStorage() {
           // Initialize state with loadTasks() (like useState(loadTasks()))
@@ -1074,6 +1416,18 @@
           }, 100);
         };
 
+        // Test swipe-to-edit functionality
+        window.testSwipeEdit = function() {
+          console.log('🧪 Testing swipe-to-edit...');
+          const firstTask = getActive()[0];
+          if (firstTask) {
+            console.log('Opening edit modal for:', firstTask.title);
+            openEditModal(firstTask);
+          } else {
+            console.log('No active tasks to edit. Add a task first.');
+          }
+        };
+
         // Expose functions globally
         window.toggleComplete = toggleComplete;
         window.addTask = addTask;
@@ -1081,6 +1435,7 @@
         window.setTasks = setTasks;
         window.getActive = getActive;
         window.getDone = getDone;
+        window.openEditModal = openEditModal;
         window.loadTasks = loadTasks;
         window.saveTasks = saveTasks;
 
