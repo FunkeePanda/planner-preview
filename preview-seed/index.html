@@ -1160,9 +1160,8 @@
             dragPlaceholder.style.margin = getComputedStyle(draggedElement).margin;
           }
 
-          // Move placeholder only if index actually changes
-          const currentChildren = Array.from(todayList.children);
-          const currentIndex = currentChildren.indexOf(dragPlaceholder);
+          // Determine desired beforeNode in droppables space
+          const beforeNode = (newIndex >= droppables.length) ? null : droppables[newIndex];
 
           // FLIP: measure first positions for siblings (excluding dragged and placeholder)
           const firstRects = new Map();
@@ -1172,18 +1171,14 @@
             }
           }
 
-          if (newIndex !== currentIndex) {
-            if (newIndex >= droppables.length) {
-              // Append at end
-              if (currentChildren[currentChildren.length - 1] !== dragPlaceholder) {
-                todayList.appendChild(dragPlaceholder);
-              }
+          // Only move placeholder if its current position differs
+          const currentNext = dragPlaceholder.nextElementSibling;
+          const isAlreadyCorrect = (beforeNode === null && dragPlaceholder === todayList.lastElementChild) || (beforeNode !== null && currentNext === beforeNode);
+          if (!isAlreadyCorrect) {
+            if (beforeNode === null) {
+              todayList.appendChild(dragPlaceholder);
             } else {
-              // Insert before the element at newIndex
-              const beforeNode = droppables[newIndex];
-              if (beforeNode && beforeNode !== dragPlaceholder) {
-                todayList.insertBefore(dragPlaceholder, beforeNode);
-              }
+              todayList.insertBefore(dragPlaceholder, beforeNode);
             }
             dragLastIndex = newIndex;
             dragLastSwitchY = y;
