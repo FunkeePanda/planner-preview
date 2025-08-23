@@ -408,8 +408,8 @@
     <main>
       <section id="tab-today">
         <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.41-automated-test</h2>
-          <div class="muted" style="margin-bottom:14px">Added automated resurrection test - run testResurrection() in console to test the exact bug scenario.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.42-expose-tasks</h2>
+          <div class="muted" style="margin-bottom:14px">Exposed tasks state to window for testing - investigating resurrection bug with automated tests.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -426,7 +426,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.41-automated-test — active:0 done:0
+              build: STEP-1.42-expose-tasks — active:0 done:0
             </footer>
         </div>
       </section>
@@ -534,7 +534,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.41-automated-test
+      build: STEP-1.42-expose-tasks
     </div>
 
     <script>
@@ -2186,7 +2186,7 @@
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.41-automated-test — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.42-expose-tasks — active:${activeCount} done:${doneCount}`;
           }
         }
 
@@ -2700,7 +2700,7 @@
           }, 500); // Wait for first task to be added
         };
 
-        // Expose functions globally
+        // Expose functions and state globally
         window.toggleComplete = toggleComplete;
         window.addTask = addTask;
         window.clearCompleted = clearCompleted;
@@ -2710,6 +2710,12 @@
         window.openEditModal = openEditModal;
         window.loadTasks = loadTasks;
         window.saveTasks = saveTasks;
+        
+        // Expose tasks state for debugging
+        Object.defineProperty(window, 'tasks', {
+          get: () => tasks,
+          set: (value) => { tasks = value; }
+        });
 
         // Initialize
         loadTasksFromStorage();
