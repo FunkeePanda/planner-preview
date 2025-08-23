@@ -408,8 +408,8 @@
     <main>
       <section id="tab-today">
         <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.46-fix-position</h2>
-          <div class="muted" style="margin-bottom:14px">Fixed animation position! Tasks now animate in place instead of jumping to top during deletion.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.47-fix-position-simple</h2>
+          <div class="muted" style="margin-bottom:14px">Simplified position fix! Use insertBefore to maintain exact original index position during animation.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -426,7 +426,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.46-fix-position — active:0 done:0
+              build: STEP-1.47-fix-position-simple — active:0 done:0
             </footer>
         </div>
       </section>
@@ -534,7 +534,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.46-fix-position
+      build: STEP-1.47-fix-position-simple
     </div>
 
     <script>
@@ -2043,18 +2043,18 @@
           // Clear containers completely, but preserve animating delete elements
           console.log('DevLog: Before clearing - todayList children:', todayList.children.length, 'completedList children:', completedList.children.length);
           
-          // Preserve animating delete elements
+          // Preserve animating delete elements with their current positions
           const animatingElements = [];
-          Array.from(todayList.children).forEach(child => {
+          Array.from(todayList.children).forEach((child, index) => {
             if (child.dataset.animatingDelete === 'true') {
-              animatingElements.push(child);
-              console.log('DevLog: Preserving animating element:', child.dataset.taskId);
+              animatingElements.push({ element: child, originalIndex: index });
+              console.log('DevLog: Preserving animating element:', child.dataset.taskId, 'at index:', index);
             }
           });
-          Array.from(completedList.children).forEach(child => {
+          Array.from(completedList.children).forEach((child, index) => {
             if (child.dataset.animatingDelete === 'true') {
-              animatingElements.push(child);
-              console.log('DevLog: Preserving animating element:', child.dataset.taskId);
+              animatingElements.push({ element: child, originalIndex: index });
+              console.log('DevLog: Preserving animating element:', child.dataset.taskId, 'at index:', index);
             }
           });
           
@@ -2063,40 +2063,36 @@
           
           console.log('DevLog: After clearing - todayList children:', todayList.children.length, 'completedList children:', completedList.children.length);
 
-          // Render active tasks AND insert animating elements at correct positions
-          // Create a combined list of active tasks + animating elements, sorted by sortOrder
-          const activeWithAnimating = [];
-          
-          // Add active tasks
+          // Render active tasks first
           active.forEach(task => {
-            activeWithAnimating.push({ type: 'active', task, sortOrder: task.sortOrder || 0 });
+            let card = existingCards.get(task.id);
+            if (card) {
+              // Update existing card state
+              updateCardFromTask(card, task);
+            } else {
+              // Create new card
+              card = createTaskCard(task);
+            }
+            todayList.appendChild(card);
           });
           
-          // Add animating elements (get their original sortOrder)
-          animatingElements.forEach(element => {
-            const sortOrder = parseInt(element.dataset.sortOrder) || 0;
-            activeWithAnimating.push({ type: 'animating', element, sortOrder });
-            console.log('DevLog: Preserving animating element at sortOrder:', sortOrder);
-          });
-          
-          // Sort by sortOrder to maintain original positions
-          activeWithAnimating.sort((a, b) => a.sortOrder - b.sortOrder);
-          
-          // Render in correct order
-          activeWithAnimating.forEach(item => {
-            if (item.type === 'active') {
-              let card = existingCards.get(item.task.id);
-              if (card) {
-                // Update existing card state
-                updateCardFromTask(card, item.task);
-              } else {
-                // Create new card
-                card = createTaskCard(item.task);
-              }
-              todayList.appendChild(card);
-            } else if (item.type === 'animating') {
-              todayList.appendChild(item.element);
-              console.log('DevLog: Inserted animating element at correct position');
+          // Insert animating elements at their original positions
+          animatingElements.forEach(animatingInfo => {
+            const { element, originalIndex } = animatingInfo;
+            const taskId = element.dataset.taskId;
+            
+            // Insert at the original index, or at the end if index is too high
+            const currentChildren = Array.from(todayList.children);
+            const insertIndex = Math.min(originalIndex, currentChildren.length);
+            
+            if (insertIndex >= currentChildren.length) {
+              // Append at end
+              todayList.appendChild(element);
+              console.log('DevLog: Appended animating element', taskId, 'at end (original index', originalIndex, 'was too high)');
+            } else {
+              // Insert before the element at insertIndex
+              todayList.insertBefore(element, currentChildren[insertIndex]);
+              console.log('DevLog: Inserted animating element', taskId, 'at index', insertIndex, '(original index', originalIndex, ')');
             }
           });
 
@@ -2218,7 +2214,7 @@
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.46-fix-position — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.47-fix-position-simple — active:${activeCount} done:${doneCount}`;
           }
         }
 
