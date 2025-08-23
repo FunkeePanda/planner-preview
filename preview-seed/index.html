@@ -408,8 +408,8 @@
     <main>
       <section id="tab-today">
         <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.37-fix-task-resurrection</h2>
-          <div class="muted" style="margin-bottom:14px">Fixed task resurrection bug - tasks are immediately removed from state to prevent coming back.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.38-fix-element-reuse</h2>
+          <div class="muted" style="margin-bottom:14px">Fixed animating element reuse - prevents deleted tasks from being resurrected during re-renders.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -426,7 +426,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.37-fix-task-resurrection — active:0 done:0
+              build: STEP-1.38-fix-element-reuse — active:0 done:0
             </footer>
         </div>
       </section>
@@ -534,7 +534,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.37-fix-task-resurrection
+      build: STEP-1.38-fix-element-reuse
     </div>
 
     <script>
@@ -1975,16 +1975,22 @@
           console.log('DevLog: Rendering tasks - active:', active.length, 'done:', done.length);
           console.log('DevLog: Active task IDs:', active.map(t => t.id));
           console.log('DevLog: Done task IDs:', done.map(t => t.id));
+          
+          // Debug existing elements
+          const allExisting = [...todayList.children, ...completedList.children];
+          const animatingCount = allExisting.filter(el => el.dataset.animatingDelete === 'true').length;
+          console.log('DevLog: Found', animatingCount, 'animating delete elements');
 
           // Get existing cards to avoid destroying checkbox state
+          // BUT exclude animating delete elements to prevent resurrection
           const existingCards = new Map();
           Array.from(todayList.children).forEach(card => {
-            if (card.dataset.taskId) {
+            if (card.dataset.taskId && card.dataset.animatingDelete !== 'true') {
               existingCards.set(card.dataset.taskId, card);
             }
           });
           Array.from(completedList.children).forEach(card => {
-            if (card.dataset.taskId) {
+            if (card.dataset.taskId && card.dataset.animatingDelete !== 'true') {
               existingCards.set(card.dataset.taskId, card);
             }
           });
@@ -2148,7 +2154,7 @@
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.37-fix-task-resurrection — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.38-fix-element-reuse — active:${activeCount} done:${doneCount}`;
           }
         }
 
