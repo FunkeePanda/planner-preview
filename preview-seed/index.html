@@ -408,8 +408,8 @@
     <main>
       <section id="tab-today">
         <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.35-cooler-delete-animation</h2>
-          <div class="muted" style="margin-bottom:14px">Slower, cooler delete animation with smooth cubic-bezier easing for maximum visual satisfaction.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.36-fix-swipe-functionality</h2>
+          <div class="muted" style="margin-bottom:14px">Fixed swipe-to-edit functionality - drag and swipe now work together without conflicts.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -426,7 +426,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.35-cooler-delete-animation — active:0 done:0
+              build: STEP-1.36-fix-swipe-functionality — active:0 done:0
             </footer>
         </div>
       </section>
@@ -534,7 +534,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.35-cooler-delete-animation
+      build: STEP-1.36-fix-swipe-functionality
     </div>
 
     <script>
@@ -843,19 +843,23 @@
           return;
         }
         
-        console.log('🔥 DevLog: Mouse down on draggable task:', taskCard.dataset.taskId);
+        console.log('🔥 DevLog: Mouse down on draggable task - preparing for potential drag:', taskCard.dataset.taskId);
         
+        // Only store initial position, don't set draggedElement yet
+        // Let the move handler determine if this becomes a drag or swipe
         dragStartPos.x = e.clientX;
         dragStartPos.y = e.clientY;
-        draggedElement = taskCard;
-        draggedTaskId = taskCard.dataset.taskId;
         
-        // Calculate offset from mouse to element top-left
+        // Store reference but don't commit to drag yet
         const rect = taskCard.getBoundingClientRect();
         dragOffset.x = e.clientX - rect.left;
         dragOffset.y = e.clientY - rect.top;
         
-        e.preventDefault();
+        // Store potential drag element but don't activate drag mode
+        window._potentialDragElement = taskCard;
+        window._potentialDragTaskId = taskCard.dataset.taskId;
+        
+        // Don't prevent default - let swipe handle it if it's horizontal
       }
       
       function handleDragTouchStart(e) {
@@ -888,7 +892,8 @@
       }
       
       function handleDragMouseMove(e) {
-        if (!draggedElement) return;
+        // Check if we have a potential drag element
+        if (!window._potentialDragElement && !draggedElement) return;
         
         dragCurrentPos.x = e.clientX;
         dragCurrentPos.y = e.clientY;
@@ -906,17 +911,23 @@
           
           if (isMoreHorizontal) {
             // This looks like a swipe gesture, cancel drag
-            console.log('🔄 DevLog: Horizontal movement detected, canceling drag for swipe');
+            console.log('🔄 DevLog: Horizontal movement detected, letting swipe handle it');
             cancelDragForSwipe();
             return;
           } else {
-            // This looks like a drag gesture, start drag mode
+            // This looks like a drag gesture, activate drag mode now
             console.log('🔄 DevLog: Vertical/mixed movement detected, starting drag');
+            if (window._potentialDragElement) {
+              draggedElement = window._potentialDragElement;
+              draggedTaskId = window._potentialDragTaskId;
+              window._potentialDragElement = null;
+              window._potentialDragTaskId = null;
+            }
             startDragMode();
           }
         }
         
-        if (isDragMode) {
+        if (isDragMode && draggedElement) {
           updateDragPosition(e.clientX, e.clientY);
           updateDropTarget(e.clientX, e.clientY);
         }
@@ -961,23 +972,25 @@
       
       function cancelDragForSwipe() {
         // Cancel the drag operation and let swipe take over
-        if (draggedElement) {
-          console.log('🔄 DevLog: Canceling drag, allowing swipe to proceed');
-          
-          // Clean up drag state
-          draggedElement = null;
-          draggedTaskId = null;
-          isDragMode = false;
-          isGestureDecided = false; // Reset gesture decision
-          dragStartPos = { x: 0, y: 0 };
-          dragCurrentPos = { x: 0, y: 0 };
-          dragOffset = { x: 0, y: 0 };
-          
-          // Remove any placeholder
-          if (dragPlaceholder && dragPlaceholder.parentNode) {
-            dragPlaceholder.remove();
-            dragPlaceholder = null;
-          }
+        console.log('🔄 DevLog: Canceling drag, allowing swipe to proceed');
+        
+        // Clean up drag state
+        draggedElement = null;
+        draggedTaskId = null;
+        isDragMode = false;
+        isGestureDecided = false; // Reset gesture decision
+        dragStartPos = { x: 0, y: 0 };
+        dragCurrentPos = { x: 0, y: 0 };
+        dragOffset = { x: 0, y: 0 };
+        
+        // Clean up potential drag state
+        window._potentialDragElement = null;
+        window._potentialDragTaskId = null;
+        
+        // Remove any placeholder
+        if (dragPlaceholder && dragPlaceholder.parentNode) {
+          dragPlaceholder.remove();
+          dragPlaceholder = null;
         }
       }
       
@@ -1166,6 +1179,10 @@
         dragStartPos = { x: 0, y: 0 };
         dragCurrentPos = { x: 0, y: 0 };
         dragOffset = { x: 0, y: 0 };
+        
+        // Clean up potential drag state
+        window._potentialDragElement = null;
+        window._potentialDragTaskId = null;
       }
       
       function updateTaskSortOrder(taskId, newIndex) {
@@ -1238,8 +1255,8 @@
             return;
           }
           
-          // Don't start swipe if we're in drag mode or about to drag
-          if (isDragMode || draggedElement) {
+          // Don't start swipe if we're in active drag mode
+          if (isDragMode) {
             return;
           }
           
@@ -1247,11 +1264,11 @@
           if (container.draggable) {
             // Set a delay to see if drag starts first
             setTimeout(() => {
-              // Only start swipe if no drag operation started and we haven't been canceled
-              if (!isDragMode && !container.classList.contains('dragging') && !draggedElement) {
+              // Only start swipe if no drag operation started and gesture hasn't been decided
+              if (!isDragMode && !container.classList.contains('dragging') && !isGestureDecided) {
                 startSwipeGesture(e);
               } else {
-                console.log('🔄 DevLog: Swipe canceled - drag operation in progress');
+                console.log('🔄 DevLog: Swipe canceled - drag operation in progress or gesture decided');
               }
             }, 50); // Even shorter delay for better gesture detection
             return;
@@ -2129,7 +2146,7 @@
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.35-cooler-delete-animation — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.36-fix-swipe-functionality — active:${activeCount} done:${doneCount}`;
           }
         }
 
