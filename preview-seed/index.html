@@ -56,11 +56,13 @@
       .fab:active{ transform: translateY(1px); }
       .fab:focus-visible{ outline:2px solid rgba(255,255,255,.9); outline-offset:2px; border-radius:3px; }
 
-      /* Swipe-to-edit styles */
+      /* Enhanced Swipe-to-edit styles */
       .task-swipe-container {
         position: relative;
         overflow: hidden;
         border-radius: 12px;
+        /* Ensure consistent height for smooth animations */
+        min-height: 60px;
       }
       
       .task-content {
@@ -71,9 +73,12 @@
         background: rgba(255,255,255,.06);
         border: 1px solid rgba(255,255,255,.12);
         border-radius: 12px;
-        transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        transition: transform 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
         position: relative;
-        z-index: 2;
+        z-index: 3;
+        /* Prevent content from becoming transparent during swipe */
+        will-change: transform;
+        backface-visibility: hidden;
       }
       
       .task-actions {
@@ -81,40 +86,93 @@
         right: 0;
         top: 0;
         height: 100%;
-        display: flex;
-        align-items: center;
-        background: rgba(255, 165, 0, 0.9);
-        border-radius: 0 12px 12px 0;
-        z-index: 1;
-        transform: translateX(100%);
-        transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-      }
-      
-      .edit-btn {
-        padding: 0 20px;
-        background: none;
-        border: none;
-        color: white;
-        font-size: 18px;
-        cursor: pointer;
-        height: 100%;
+        width: 80px;
         display: flex;
         align-items: center;
         justify-content: center;
-        min-width: 60px;
+        background: linear-gradient(135deg, rgba(255, 165, 0, 0.95), rgba(255, 140, 0, 0.95));
+        border-radius: 0 12px 12px 0;
+        z-index: 2;
+        /* Keep actions fixed in place - no transform needed */
+        transform: translateX(0);
+        /* Add subtle shadow for depth */
+        box-shadow: -2px 0 8px rgba(255, 165, 0, 0.3);
+        /* Smooth transitions for visual polish */
+        transition: opacity 0.2s ease-out, box-shadow 0.2s ease-out;
+        opacity: 0;
+      }
+      
+      .edit-btn {
+        width: 100%;
+        height: 100%;
+        background: none;
+        border: none;
+        color: white;
+        font-size: 20px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 0 12px 12px 0;
+        /* Larger touch target for better mobile UX */
+        min-width: 80px;
+        min-height: 44px;
+        transition: background-color 0.2s ease;
+        /* Prevent text selection on swipe */
+        user-select: none;
+        -webkit-user-select: none;
       }
       
       .edit-btn:active {
-        background: rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.15);
+        transform: scale(0.95);
       }
       
-      /* Swipe states */
+      .edit-btn:focus-visible {
+        outline: 2px solid rgba(255, 255, 255, 0.8);
+        outline-offset: 2px;
+      }
+      
+      /* Enhanced swipe states with smooth reveal */
       .task-swipe-container.swiped .task-content {
-        transform: translateX(-60px);
+        transform: translateX(-80px);
       }
       
       .task-swipe-container.swiped .task-actions {
-        transform: translateX(0);
+        opacity: 1;
+        box-shadow: -2px 0 12px rgba(255, 165, 0, 0.4);
+      }
+      
+      /* Subtle animation for swipe threshold reached */
+      .task-swipe-container.snap-back .task-content {
+        animation: swipeSnapBack 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+      }
+      
+      @keyframes swipeSnapBack {
+        0% { transform: translateX(-85px); }
+        50% { transform: translateX(-75px); }
+        100% { transform: translateX(-80px); }
+      }
+      
+      /* Prevent content overflow on narrow screens */
+      @media (max-width: 480px) {
+        .task-content {
+          gap: 8px;
+          padding: 10px;
+        }
+        
+        .task-actions {
+          width: 70px;
+        }
+        
+        .edit-btn {
+          min-width: 70px;
+          font-size: 18px;
+        }
+        
+        .task-swipe-container.swiped .task-content {
+          transform: translateX(-70px);
+        }
       }
 
       .modal-backdrop{
@@ -271,8 +329,8 @@
     <main>
       <section id="tab-today">
         <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.4-swipe</h2>
-          <div class="muted" style="margin-bottom:14px">Swipe left on tasks to reveal edit button. Tap to edit title and duration.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.5-smooth</h2>
+          <div class="muted" style="margin-bottom:14px">Enhanced swipe-to-edit with buttery smooth animations and mobile-optimized physics.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -289,7 +347,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.4-swipe — active:0 done:0
+              build: STEP-1.5-smooth — active:0 done:0
             </footer>
         </div>
       </section>
@@ -381,7 +439,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.4-swipe
+      build: STEP-1.5-smooth
     </div>
 
     <script>
@@ -631,39 +689,97 @@
         return swipeContainer;
       }
 
-      // Swipe gesture detection
+      // Enhanced swipe gesture detection with smooth physics
       function addSwipeGesture(container, content) {
         let startX = 0;
         let currentX = 0;
         let isDragging = false;
         let startTime = 0;
+        let lastMoveTime = 0;
+        let velocity = 0;
+        
+        // Get responsive swipe distances based on screen size
+        const getSwipeDistances = () => {
+          const isMobile = window.innerWidth <= 480;
+          return {
+            maxSwipe: isMobile ? -70 : -80,
+            threshold: isMobile ? -35 : -40,
+            resistance: isMobile ? 0.3 : 0.25
+          };
+        };
         
         function handleStart(e) {
+          // Prevent conflicts with other interactions
+          if (e.target.closest('.edit-btn') || e.target.closest('input') || e.target.closest('button')) {
+            return;
+          }
+          
           startX = e.touches ? e.touches[0].clientX : e.clientX;
           currentX = startX;
           isDragging = true;
           startTime = Date.now();
+          lastMoveTime = startTime;
+          velocity = 0;
+          
+          // Remove transitions for smooth dragging
           content.style.transition = 'none';
+          const actions = container.querySelector('.task-actions');
+          if (actions) {
+            actions.style.transition = 'none';
+          }
+          
+          // Close other open swipes
+          document.querySelectorAll('.task-swipe-container.swiped').forEach(other => {
+            if (other !== container) {
+              other.classList.remove('swiped');
+            }
+          });
         }
         
         function handleMove(e) {
           if (!isDragging) return;
           
           e.preventDefault();
+          const now = Date.now();
+          const prevX = currentX;
           currentX = e.touches ? e.touches[0].clientX : e.clientX;
           const deltaX = currentX - startX;
+          const timeDelta = now - lastMoveTime;
+          
+          // Calculate velocity for momentum
+          if (timeDelta > 0) {
+            velocity = (currentX - prevX) / timeDelta;
+          }
+          lastMoveTime = now;
           
           // Only allow left swipe (negative delta)
           if (deltaX < 0) {
-            const translateX = Math.max(deltaX, -60);
+            const distances = getSwipeDistances();
+            let translateX = deltaX;
+            
+            // Apply resistance when approaching max swipe distance
+            if (translateX < distances.maxSwipe) {
+              const overshoot = Math.abs(translateX - distances.maxSwipe);
+              translateX = distances.maxSwipe - (overshoot * distances.resistance);
+            }
+            
+            // Smooth transform with hardware acceleration
             content.style.transform = `translateX(${translateX}px)`;
             
-            // Update actions visibility
+            // Reveal actions with smooth opacity transition
             const actions = container.querySelector('.task-actions');
             if (actions) {
-              const actionTranslate = Math.min(100 + (deltaX * 1.67), 100);
-              actions.style.transform = `translateX(${actionTranslate}%)`;
+              const progress = Math.min(Math.abs(deltaX) / Math.abs(distances.threshold), 1);
+              actions.style.opacity = progress;
+              
+              // Add subtle scale effect for polish
+              const scale = 0.9 + (progress * 0.1);
+              actions.style.transform = `scale(${scale})`;
             }
+          } else if (deltaX > 0) {
+            // Slight resistance for right swipe to prevent accidental actions
+            const resistedDelta = deltaX * 0.1;
+            content.style.transform = `translateX(${Math.min(resistedDelta, 10)}px)`;
           }
         }
         
@@ -673,15 +789,32 @@
           
           const deltaX = currentX - startX;
           const deltaTime = Date.now() - startTime;
-          const velocity = Math.abs(deltaX) / deltaTime;
+          const distances = getSwipeDistances();
           
-          // Determine if swipe should complete
-          const shouldReveal = deltaX < -30 || (velocity > 0.5 && deltaX < -10);
+          // Calculate final velocity for momentum-based decisions
+          const finalVelocity = Math.abs(velocity);
           
-          content.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+          // Determine if swipe should complete based on distance and velocity
+          const shouldReveal = deltaX < distances.threshold || 
+                              (finalVelocity > 0.3 && deltaX < distances.threshold * 0.7);
+          
+          // Restore smooth transitions
+          content.style.transition = 'transform 0.35s cubic-bezier(0.25, 0.8, 0.25, 1)';
+          const actions = container.querySelector('.task-actions');
+          if (actions) {
+            actions.style.transition = 'opacity 0.2s ease-out, transform 0.2s ease-out, box-shadow 0.2s ease-out';
+          }
           
           if (shouldReveal) {
             container.classList.add('swiped');
+            
+            // Add snap-back animation for visual feedback
+            if (Math.abs(deltaX) > Math.abs(distances.maxSwipe) * 0.9) {
+              container.classList.add('snap-back');
+              setTimeout(() => {
+                container.classList.remove('snap-back');
+              }, 300);
+            }
           } else {
             container.classList.remove('swiped');
           }
@@ -689,30 +822,57 @@
           // Reset inline styles to let CSS classes take over
           setTimeout(() => {
             content.style.transform = '';
-            const actions = container.querySelector('.task-actions');
             if (actions) {
               actions.style.transform = '';
+              actions.style.opacity = '';
             }
-          }, 300);
+          }, 350);
         }
         
-        // Touch events
+        // Enhanced event listeners with better passive handling
         content.addEventListener('touchstart', handleStart, { passive: false });
         content.addEventListener('touchmove', handleMove, { passive: false });
-        content.addEventListener('touchend', handleEnd);
+        content.addEventListener('touchend', handleEnd, { passive: true });
+        content.addEventListener('touchcancel', handleEnd, { passive: true });
         
-        // Mouse events for desktop testing
+        // Mouse events for desktop testing with improved handling
         content.addEventListener('mousedown', handleStart);
-        content.addEventListener('mousemove', handleMove);
-        content.addEventListener('mouseup', handleEnd);
-        content.addEventListener('mouseleave', handleEnd);
         
-        // Close swipe when clicking elsewhere
-        document.addEventListener('click', function(e) {
-          if (!container.contains(e.target)) {
+        // Global mouse events to handle dragging outside element
+        const handleMouseMove = (e) => {
+          if (isDragging) handleMove(e);
+        };
+        const handleMouseUp = (e) => {
+          if (isDragging) handleEnd(e);
+        };
+        
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+        
+        // Close swipe when clicking elsewhere or scrolling
+        const closeSwipe = (e) => {
+          if (!container.contains(e.target) && !e.target.closest('.modal')) {
             container.classList.remove('swiped');
           }
-        });
+        };
+        
+        document.addEventListener('click', closeSwipe);
+        document.addEventListener('scroll', () => {
+          container.classList.remove('swiped');
+        }, { passive: true });
+        
+        // Handle window resize for responsive behavior
+        const handleResize = () => {
+          if (container.classList.contains('swiped')) {
+            // Re-trigger swipe state to adjust for new screen size
+            container.classList.remove('swiped');
+            setTimeout(() => {
+              container.classList.add('swiped');
+            }, 50);
+          }
+        };
+        
+        window.addEventListener('resize', handleResize, { passive: true });
       }
 
       // Edit modal functionality
@@ -1259,7 +1419,7 @@
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.4-swipe — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.5-smooth — active:${activeCount} done:${doneCount}`;
           }
         }
 
@@ -1416,15 +1576,37 @@
           }, 100);
         };
 
-        // Test swipe-to-edit functionality
+        // Test enhanced swipe-to-edit functionality
         window.testSwipeEdit = function() {
-          console.log('🧪 Testing swipe-to-edit...');
+          console.log('🧪 Testing enhanced swipe-to-edit...');
           const firstTask = getActive()[0];
           if (firstTask) {
             console.log('Opening edit modal for:', firstTask.title);
             openEditModal(firstTask);
           } else {
             console.log('No active tasks to edit. Add a task first.');
+          }
+        };
+
+        // Test swipe physics
+        window.testSwipePhysics = function() {
+          console.log('🧪 Testing swipe physics...');
+          const containers = document.querySelectorAll('.task-swipe-container');
+          if (containers.length > 0) {
+            const firstContainer = containers[0];
+            console.log('Simulating swipe reveal...');
+            firstContainer.classList.add('swiped');
+            
+            setTimeout(() => {
+              console.log('Adding snap-back animation...');
+              firstContainer.classList.add('snap-back');
+              setTimeout(() => {
+                firstContainer.classList.remove('snap-back');
+                console.log('✅ Swipe physics test complete');
+              }, 300);
+            }, 1000);
+          } else {
+            console.log('No task containers found');
           }
         };
 
