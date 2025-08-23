@@ -406,8 +406,8 @@
     <main>
       <section id="tab-today">
         <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.28-drag-drop</h2>
-          <div class="muted" style="margin-bottom:14px">Added drag-and-drop reordering - drag active tasks to reorder with smooth animations and persistence.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.28-debug-drag</h2>
+          <div class="muted" style="margin-bottom:14px">Debugging drag-and-drop - added console logs and investigating swipe gesture conflicts.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -424,7 +424,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.28-drag-drop — active:0 done:0
+              build: STEP-1.28-debug-drag — active:0 done:0
             </footer>
         </div>
       </section>
@@ -532,7 +532,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.28-drag-drop
+      build: STEP-1.28-debug-drag
     </div>
 
     <script>
@@ -820,8 +820,14 @@
       }
       
       function handleDragStart(e) {
+        console.log('🔥 DevLog: handleDragStart fired!', e.target);
         const taskCard = e.target.closest('.task-swipe-container');
-        if (!taskCard || !taskCard.draggable) return;
+        console.log('🔥 DevLog: taskCard found:', taskCard, 'draggable:', taskCard?.draggable);
+        
+        if (!taskCard || !taskCard.draggable) {
+          console.log('🔥 DevLog: No taskCard or not draggable, returning');
+          return;
+        }
         
         draggedElement = taskCard;
         draggedTaskId = taskCard.dataset.taskId;
@@ -838,7 +844,7 @@
           navigator.vibrate(50);
         }
         
-        console.log('DevLog: Drag started for task:', draggedTaskId);
+        console.log('🔥 DevLog: Drag started for task:', draggedTaskId);
       }
       
       function handleDragOver(e) {
@@ -1011,6 +1017,23 @@
             return;
           }
           
+          // For mouse events, check if this might be intended as a drag operation
+          // If it's a mouse event and the container is draggable, wait a bit to see if it's a drag
+          if (!e.touches && container.draggable) {
+            // Set a small delay to allow native drag to start first
+            setTimeout(() => {
+              // Only start swipe if no drag operation started
+              if (!container.classList.contains('dragging')) {
+                startSwipeGesture(e);
+              }
+            }, 150); // 150ms delay to allow drag to start
+            return;
+          }
+          
+          startSwipeGesture(e);
+        }
+        
+        function startSwipeGesture(e) {
           startX = e.touches ? e.touches[0].clientX : e.clientX;
           currentX = startX;
           isDragging = true;
@@ -1814,7 +1837,7 @@
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.28-drag-drop — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.28-debug-drag — active:${activeCount} done:${doneCount}`;
           }
         }
 
@@ -2208,6 +2231,40 @@
             console.log('No task containers found');
           }
         };
+        
+        // Test drag and drop functionality
+        window.testDragDrop = function() {
+          console.log('🔍 Testing drag and drop setup...');
+          const draggableElements = document.querySelectorAll('.task-swipe-container[draggable="true"]');
+          console.log(`Found ${draggableElements.length} draggable elements`);
+          
+          draggableElements.forEach((el, i) => {
+            console.log(`Element ${i + 1}:`, {
+              id: el.dataset.taskId,
+              draggable: el.draggable,
+              sortOrder: el.dataset.sortOrder,
+              classes: el.className
+            });
+          });
+          
+          const todayList = document.getElementById('today-list');
+          if (todayList) {
+            console.log('Event listeners on today-list should be attached via addEventListener');
+          }
+          
+          // Test if draggable attribute is working
+          if (draggableElements.length > 0) {
+            const firstElement = draggableElements[0];
+            console.log('First element draggable attribute:', firstElement.getAttribute('draggable'));
+            console.log('First element draggable property:', firstElement.draggable);
+          }
+          
+          console.log('Try clicking and dragging a task card now...');
+          console.log('If nothing happens, the issue might be:');
+          console.log('1. Swipe gesture interfering with drag');
+          console.log('2. Mobile touch events not supporting native drag');
+          console.log('3. Event listeners not properly attached');
+        };
 
         // Expose functions globally
         window.toggleComplete = toggleComplete;
@@ -2231,6 +2288,7 @@
         console.log('📋 Run testCheckboxFlow() to verify checkbox behavior');
         console.log('📊 Debug footer shows live active/done counts');
         console.log('🔄 Drag and drop reordering enabled');
+        console.log('🔍 Run testDragDrop() to debug drag and drop');
       })();
     </script>
   </body>
