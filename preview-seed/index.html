@@ -407,9 +407,9 @@
 
     <main>
       <section id="tab-today">
-        <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.47-fix-position-simple</h2>
-          <div class="muted" style="margin-bottom:14px">Simplified position fix! Use insertBefore to maintain exact original index position during animation.</div>
+                  <div class="card">
+          <h2 style="margin:0 0 10px 0">Today — step 1.48-data-export-import</h2>
+          <div class="muted" style="margin-bottom:14px">Added data export/import in Settings. Export tasks to JSON and import back.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -426,7 +426,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.47-fix-position-simple — active:0 done:0
+              build: STEP-1.48-data-export-import — active:0 done:0
             </footer>
         </div>
       </section>
@@ -449,7 +449,7 @@
 
       <section id="tab-settings" hidden>
         <div class="card">
-          <h2 style="margin:0 0 16px 0">Settings (placeholder)</h2>
+          <h2 style="margin:0 0 16px 0">Settings</h2>
           <div class="settings-row">
             <span>Theme</span>
             <span class="muted">System</span>
@@ -458,6 +458,18 @@
             <span>Conflicts</span>
             <span class="muted">On</span>
           </div>
+          <div class="settings-row">
+            <span>Export</span>
+            <button id="export-json-btn" class="btn">Export JSON</button>
+          </div>
+          <div class="settings-row">
+            <span>Import</span>
+            <div style="display:flex;align-items:center;gap:8px">
+              <button id="import-json-btn" class="btn">Import JSON</button>
+              <span class="muted" style="font-size:12px">Replaces all tasks</span>
+            </div>
+          </div>
+          <input id="import-file" type="file" accept="application/json" style="display:none" />
         </div>
       </section>
     </main>
@@ -534,7 +546,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.47-fix-position-simple
+      build: STEP-1.48-data-export-import
     </div>
 
     <script>
@@ -2214,7 +2226,7 @@
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.47-fix-position-simple — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.48-data-export-import — active:${activeCount} done:${doneCount}`;
           }
         }
 
@@ -2327,6 +2339,117 @@
             closeDeleteModal();
           }
         });
+
+        // Export / Import (JSON)
+        const exportBtn = document.getElementById('export-json-btn');
+        const importBtn = document.getElementById('import-json-btn');
+        const importInput = document.getElementById('import-file');
+
+        function exportTasksToJSON() {
+          try {
+            const payload = {
+              version: 'v1',
+              exportedAt: new Date().toISOString(),
+              tasks: tasks
+            };
+            const json = JSON.stringify(payload, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            a.href = url;
+            a.download = `planner-tasks-${timestamp}.json`;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+            }, 0);
+            createToast(`Exported ${tasks.length} tasks`);
+          } catch (e) {
+            console.warn('Export failed:', e);
+            createToast('Export failed');
+          }
+        }
+
+        function normalizeImportedTasks(input) {
+          const rawArray = Array.isArray(input) ? input :
+                           (input && Array.isArray(input.tasks) ? input.tasks :
+                           (input && Array.isArray(input.data) ? input.data : null));
+          if (!rawArray) return null;
+
+          const normalized = rawArray.map((t, index) => {
+            const minutesNum = typeof t.minutes === 'string' ? parseInt(t.minutes, 10) :
+                               typeof t.minutes === 'number' ? t.minutes : undefined;
+            const hasMinutes = typeof minutesNum === 'number' && !Number.isNaN(minutesNum);
+
+            const normalizedTimer = t.timer ? {
+              totalSec: typeof t.timer.totalSec === 'number' ? t.timer.totalSec : (hasMinutes ? minutesNum * 60 : 0),
+              remainingSec: typeof t.timer.remainingSec === 'number' ? t.timer.remainingSec : (hasMinutes ? minutesNum * 60 : 0),
+              status: (t.timer.status === 'running' || t.timer.status === 'paused') ? t.timer.status : 'idle',
+              updatedAt: typeof t.timer.updatedAt === 'number' ? t.timer.updatedAt : Date.now()
+            } : (hasMinutes ? {
+              totalSec: minutesNum * 60,
+              remainingSec: minutesNum * 60,
+              status: 'idle',
+              updatedAt: Date.now()
+            } : null);
+
+            return {
+              id: String(t.id || generateId()),
+              title: String(t.title || 'Untitled'),
+              note: t.note || '',
+              minutes: hasMinutes ? minutesNum : undefined,
+              tag: t.tag || '',
+              completed: !!(t.completed || t.checked || t.done || t.isDone || false),
+              sortOrder: t.sortOrder !== undefined ? t.sortOrder : index * 1000,
+              timer: normalizedTimer
+            };
+          });
+
+          return normalized;
+        }
+
+        function handleImportFile(files) {
+          if (!files || files.length === 0) return;
+          const file = files[0];
+
+          if (!confirm('Importing will replace all existing tasks. Continue?')) {
+            return;
+          }
+
+          const reader = new FileReader();
+          reader.onload = function(evt) {
+            try {
+              const text = evt.target?.result || '';
+              const parsed = JSON.parse(text);
+              const normalized = normalizeImportedTasks(parsed);
+              if (!normalized) {
+                createToast('Invalid JSON format');
+                return;
+              }
+              setTasks(normalized);
+              createToast(`Imported ${normalized.length} tasks`);
+            } catch (e) {
+              console.warn('Import failed:', e);
+              createToast('Import failed');
+            } finally {
+              if (importInput) importInput.value = '';
+            }
+          };
+          reader.onerror = function() {
+            createToast('Failed to read file');
+            if (importInput) importInput.value = '';
+          };
+          reader.readAsText(file);
+        }
+
+        exportBtn?.addEventListener('click', exportTasksToJSON);
+        importBtn?.addEventListener('click', () => importInput?.click());
+        importInput?.addEventListener('change', (e) => handleImportFile(e.target.files));
+
+        // Expose for debugging
+        window.exportTasksToJSON = exportTasksToJSON;
 
         // Load tasks from storage on init (like useState initialization)
         function loadTasksFromStorage() {
