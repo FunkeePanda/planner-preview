@@ -75,11 +75,12 @@
         right: 0;
         top: 0;
         bottom: 0;
-        width: 120px; /* Wider to extend further left for drawer effect */
+        width: 160px; /* Wider to hold both edit and delete buttons */
         display: flex;
         align-items: center;
-        justify-content: flex-end; /* Align button to the right side */
-        padding-right: 20px; /* Space from the right edge */
+        justify-content: flex-end; /* Align buttons to the right side */
+        gap: 8px; /* Space between buttons */
+        padding-right: 12px; /* Space from the right edge */
         /* Always show background for consistent drawer look */
         background: linear-gradient(135deg, rgba(255, 165, 0, 0.95), rgba(255, 140, 0, 0.95));
         border-radius: 0 12px 12px 0;
@@ -117,45 +118,56 @@
         isolation: isolate;
       }
       
-      .edit-btn {
-        width: 100%;
-        height: 100%;
-        background: transparent;
-        border: none;
+      .edit-btn, .delete-btn {
+        background: rgba(255, 255, 255, 0.15);
+        border: 1px solid rgba(255, 255, 255, 0.2);
         color: white;
-        font-size: 20px;
+        font-size: 18px;
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
-        border-radius: 0 12px 12px 0;
-        /* Larger touch target for better mobile UX */
-        min-width: 80px;
+        border-radius: 8px;
+        /* Touch target for mobile UX */
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
         min-height: 44px;
-        /* Remove all visual artifacts when hidden */
+        /* Remove visual artifacts when hidden */
         outline: none;
-        box-shadow: none;
         /* Prevent text selection on swipe */
         user-select: none;
         -webkit-user-select: none;
-        /* No transitions to prevent visual glitches */
-        transition: none;
+        /* Smooth transitions for interactions */
+        transition: all 0.2s ease;
       }
       
-      /* Only show visual feedback when button is actually revealed */
-      .task-swipe-container.swiped .edit-btn:active {
-        background: rgba(255, 255, 255, 0.15);
+      .delete-btn {
+        background: rgba(220, 53, 69, 0.2);
+        border-color: rgba(220, 53, 69, 0.3);
+      }
+      
+      /* Button interaction styles */
+      .edit-btn:hover, .delete-btn:hover {
+        transform: scale(1.05);
+      }
+      
+      .edit-btn:active, .delete-btn:active {
         transform: scale(0.95);
       }
       
-      .task-swipe-container.swiped .edit-btn:focus-visible {
+      .delete-btn:hover {
+        background: rgba(220, 53, 69, 0.3);
+      }
+      
+      .edit-btn:focus-visible, .delete-btn:focus-visible {
         outline: 2px solid rgba(255, 255, 255, 0.8);
         outline-offset: 2px;
       }
       
-      /* Swipe states - card slides to reveal button underneath */
+      /* Swipe states - card slides to reveal buttons underneath */
       .task-swipe-container.swiped .task-content {
-        transform: translate3d(-80px, 0, 0);
+        transform: translate3d(-120px, 0, 0);
       }
       
       /* Enhanced shadow when button is revealed */
@@ -184,17 +196,21 @@
         }
         
         .task-actions {
-          width: 90px; /* Extended background for drawer look */
-          padding-right: 15px;
+          width: 130px; /* Extended background for both buttons */
+          padding-right: 10px;
+          gap: 6px;
         }
         
-        .edit-btn {
-          min-width: 60px;
-          font-size: 18px;
+        .edit-btn, .delete-btn {
+          width: 40px;
+          height: 40px;
+          min-width: 40px;
+          min-height: 40px;
+          font-size: 16px;
         }
         
         .task-swipe-container.swiped .task-content {
-          transform: translate3d(-70px, 0, 0);
+          transform: translate3d(-100px, 0, 0);
         }
       }
 
@@ -352,8 +368,8 @@
     <main>
       <section id="tab-today">
         <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.23-completed-section</h2>
-          <div class="muted" style="margin-bottom:14px">Fixed edit button hiding in completed section - no orange visible in completed tasks area.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.24-swipe-delete</h2>
+          <div class="muted" style="margin-bottom:14px">Added swipe-to-delete - swipe left reveals both edit (✏️) and delete (🗑️) buttons with smooth animations.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -370,7 +386,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.23-completed-section — active:0 done:0
+              build: STEP-1.24-swipe-delete — active:0 done:0
             </footer>
         </div>
       </section>
@@ -462,7 +478,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.23-completed-section
+      build: STEP-1.24-swipe-delete
     </div>
 
     <script>
@@ -679,10 +695,20 @@
           taskContent.appendChild(contentDiv.firstChild);
         }
         
-        // Create edit actions
+        // Create edit and delete actions
         const taskActions = document.createElement('div');
         taskActions.className = 'task-actions';
         
+        // Create delete button
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'delete-btn';
+        deleteBtn.innerHTML = '🗑️';
+        deleteBtn.setAttribute('aria-label', 'Delete task');
+        deleteBtn.addEventListener('click', function() {
+          deleteTask(task.id);
+        });
+        
+        // Create edit button
         const editBtn = document.createElement('button');
         editBtn.className = 'edit-btn';
         editBtn.innerHTML = '✏️';
@@ -691,6 +717,8 @@
           openEditModal(task);
         });
         
+        // Append buttons (delete first, then edit - right to left order)
+        taskActions.appendChild(deleteBtn);
         taskActions.appendChild(editBtn);
         
         // Add swipe gesture support
@@ -724,9 +752,9 @@
         // Get responsive swipe distances based on screen size
         const getSwipeDistances = () => {
           const isMobile = window.innerWidth <= 480;
-          const slideDistance = isMobile ? 70 : 80; // Original slide distances
+          const slideDistance = isMobile ? 100 : 120; // Updated for both buttons
           return {
-            maxSwipe: -slideDistance, // Cap at original slide distance
+            maxSwipe: -slideDistance, // Cap at slide distance to reveal both buttons
             threshold: -slideDistance * 0.4, // 40% of slide distance to trigger
             resistance: 0.1 // Minimal resistance for natural feel
           };
@@ -734,7 +762,7 @@
         
         function handleStart(e) {
           // Prevent conflicts with other interactions
-          if (e.target.closest('.edit-btn') || e.target.closest('input') || e.target.closest('button')) {
+          if (e.target.closest('.edit-btn') || e.target.closest('.delete-btn') || e.target.closest('input') || e.target.closest('button')) {
             return;
           }
           
@@ -1019,6 +1047,31 @@
         
         closeEditModal();
         createToast('Task updated');
+      }
+      
+      // Delete task with animation
+      function deleteTask(taskId) {
+        if (!confirm('Are you sure you want to delete this task?')) {
+          return;
+        }
+        
+        const taskElement = document.querySelector(`[data-task-id="${taskId}"]`);
+        if (taskElement) {
+          // Add deletion animation
+          taskElement.style.transition = 'transform 0.3s ease-out, opacity 0.3s ease-out';
+          taskElement.style.transform = 'translateX(-100%)';
+          taskElement.style.opacity = '0';
+          
+          // Remove from state after animation
+          setTimeout(() => {
+            setTasks(prev => prev.filter(t => t.id !== taskId));
+            createToast('Task deleted');
+          }, 300);
+        } else {
+          // Fallback if element not found
+          setTasks(prev => prev.filter(t => t.id !== taskId));
+          createToast('Task deleted');
+        }
       }
 
       // Get task data from DOM card
@@ -1465,8 +1518,10 @@
             }
           }
           
-          // Update edit button to have current task reference
+          // Update edit and delete buttons to have current task reference
           const editBtn = swipeContainer.querySelector('.edit-btn');
+          const deleteBtn = swipeContainer.querySelector('.delete-btn');
+          
           if (editBtn) {
             // Remove old listener and add new one with updated task
             const newEditBtn = editBtn.cloneNode(true);
@@ -1475,12 +1530,21 @@
               openEditModal(task);
             });
           }
+          
+          if (deleteBtn) {
+            // Remove old listener and add new one with updated task
+            const newDeleteBtn = deleteBtn.cloneNode(true);
+            deleteBtn.parentNode.replaceChild(newDeleteBtn, deleteBtn);
+            newDeleteBtn.addEventListener('click', function() {
+              deleteTask(task.id);
+            });
+          }
         }
 
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.23-completed-section — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.24-swipe-delete — active:${activeCount} done:${doneCount}`;
           }
         }
 
