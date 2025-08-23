@@ -56,7 +56,7 @@
       .fab:active{ transform: translateY(1px); }
       .fab:focus-visible{ outline:2px solid rgba(255,255,255,.9); outline-offset:2px; border-radius:3px; }
 
-      /* Enhanced Swipe-to-edit styles */
+      /* Refined Swipe-to-edit with proper layering */
       .task-swipe-container {
         position: relative;
         overflow: hidden;
@@ -75,7 +75,7 @@
         border-radius: 12px;
         transition: transform 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
         position: relative;
-        z-index: 3;
+        z-index: 2; /* Card sits on top of button */
         /* Prevent content from becoming transparent during swipe */
         will-change: transform;
         backface-visibility: hidden;
@@ -92,14 +92,12 @@
         justify-content: center;
         background: linear-gradient(135deg, rgba(255, 165, 0, 0.95), rgba(255, 140, 0, 0.95));
         border-radius: 0 12px 12px 0;
-        z-index: 2;
-        /* Keep actions fixed in place - no transform needed */
+        z-index: 1; /* Button sits behind card */
+        /* Always visible and in place - no transitions */
+        opacity: 1;
         transform: translateX(0);
-        /* Add subtle shadow for depth */
+        /* Add subtle shadow for depth when revealed */
         box-shadow: -2px 0 8px rgba(255, 165, 0, 0.3);
-        /* Smooth transitions for visual polish */
-        transition: opacity 0.2s ease-out, box-shadow 0.2s ease-out;
-        opacity: 0;
       }
       
       .edit-btn {
@@ -133,13 +131,13 @@
         outline-offset: 2px;
       }
       
-      /* Enhanced swipe states with smooth reveal */
+      /* Swipe states - card slides to reveal button underneath */
       .task-swipe-container.swiped .task-content {
         transform: translateX(-80px);
       }
       
+      /* Enhanced shadow when button is revealed */
       .task-swipe-container.swiped .task-actions {
-        opacity: 1;
         box-shadow: -2px 0 12px rgba(255, 165, 0, 0.4);
       }
       
@@ -329,8 +327,8 @@
     <main>
       <section id="tab-today">
         <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.5-smooth</h2>
-          <div class="muted" style="margin-bottom:14px">Enhanced swipe-to-edit with buttery smooth animations and mobile-optimized physics.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.6-layered</h2>
+          <div class="muted" style="margin-bottom:14px">Refined swipe-to-edit with proper layering - card slides to reveal button underneath.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -347,7 +345,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.5-smooth — active:0 done:0
+              build: STEP-1.6-layered — active:0 done:0
             </footer>
         </div>
       </section>
@@ -439,7 +437,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.5-smooth
+      build: STEP-1.6-layered
     </div>
 
     <script>
@@ -701,10 +699,11 @@
         // Get responsive swipe distances based on screen size
         const getSwipeDistances = () => {
           const isMobile = window.innerWidth <= 480;
+          const buttonWidth = isMobile ? 70 : 80;
           return {
-            maxSwipe: isMobile ? -70 : -80,
-            threshold: isMobile ? -35 : -40,
-            resistance: isMobile ? 0.3 : 0.25
+            maxSwipe: -buttonWidth, // Cap exactly at button width
+            threshold: -buttonWidth * 0.5, // 50% of button width to trigger
+            resistance: 0.15 // Less resistance for smoother feel
           };
         };
         
@@ -723,10 +722,6 @@
           
           // Remove transitions for smooth dragging
           content.style.transition = 'none';
-          const actions = container.querySelector('.task-actions');
-          if (actions) {
-            actions.style.transition = 'none';
-          }
           
           // Close other open swipes
           document.querySelectorAll('.task-swipe-container.swiped').forEach(other => {
@@ -763,19 +758,9 @@
               translateX = distances.maxSwipe - (overshoot * distances.resistance);
             }
             
-            // Smooth transform with hardware acceleration
+            // Smooth transform with hardware acceleration - pure sliding reveal
             content.style.transform = `translateX(${translateX}px)`;
             
-            // Reveal actions with smooth opacity transition
-            const actions = container.querySelector('.task-actions');
-            if (actions) {
-              const progress = Math.min(Math.abs(deltaX) / Math.abs(distances.threshold), 1);
-              actions.style.opacity = progress;
-              
-              // Add subtle scale effect for polish
-              const scale = 0.9 + (progress * 0.1);
-              actions.style.transform = `scale(${scale})`;
-            }
           } else if (deltaX > 0) {
             // Slight resistance for right swipe to prevent accidental actions
             const resistedDelta = deltaX * 0.1;
@@ -800,10 +785,6 @@
           
           // Restore smooth transitions
           content.style.transition = 'transform 0.35s cubic-bezier(0.25, 0.8, 0.25, 1)';
-          const actions = container.querySelector('.task-actions');
-          if (actions) {
-            actions.style.transition = 'opacity 0.2s ease-out, transform 0.2s ease-out, box-shadow 0.2s ease-out';
-          }
           
           if (shouldReveal) {
             container.classList.add('swiped');
@@ -822,10 +803,6 @@
           // Reset inline styles to let CSS classes take over
           setTimeout(() => {
             content.style.transform = '';
-            if (actions) {
-              actions.style.transform = '';
-              actions.style.opacity = '';
-            }
           }, 350);
         }
         
@@ -1419,7 +1396,7 @@
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.5-smooth — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.6-layered — active:${activeCount} done:${doneCount}`;
           }
         }
 
@@ -1588,22 +1565,34 @@
           }
         };
 
-        // Test swipe physics
-        window.testSwipePhysics = function() {
-          console.log('🧪 Testing swipe physics...');
+        // Test refined layering behavior
+        window.testSwipeLayering = function() {
+          console.log('🧪 Testing refined swipe layering...');
           const containers = document.querySelectorAll('.task-swipe-container');
           if (containers.length > 0) {
             const firstContainer = containers[0];
-            console.log('Simulating swipe reveal...');
+            const taskContent = firstContainer.querySelector('.task-content');
+            const editBtn = firstContainer.querySelector('.edit-btn');
+            
+            console.log('Current z-index - Task content:', getComputedStyle(taskContent).zIndex);
+            console.log('Current z-index - Edit button:', getComputedStyle(editBtn.parentElement).zIndex);
+            console.log('Edit button always visible:', getComputedStyle(editBtn.parentElement).opacity);
+            
+            console.log('Simulating slide reveal...');
             firstContainer.classList.add('swiped');
             
             setTimeout(() => {
-              console.log('Adding snap-back animation...');
-              firstContainer.classList.add('snap-back');
+              console.log('Testing button accessibility...');
+              const rect = editBtn.getBoundingClientRect();
+              console.log('Edit button position:', { 
+                visible: rect.width > 0 && rect.height > 0,
+                clickable: rect.right > rect.left 
+              });
+              
               setTimeout(() => {
-                firstContainer.classList.remove('snap-back');
-                console.log('✅ Swipe physics test complete');
-              }, 300);
+                firstContainer.classList.remove('swiped');
+                console.log('✅ Layering test complete - button should slide behind card');
+              }, 1500);
             }, 1000);
           } else {
             console.log('No task containers found');
