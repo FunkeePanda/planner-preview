@@ -209,6 +209,8 @@
         box-shadow: 0 12px 35px rgba(0, 0, 0, 0.4);
         border: 2px solid rgba(108, 99, 255, 0.5);
         transition: none !important; /* Disable transitions during drag */
+        will-change: transform; /* Hint compositor */
+        transform: translate3d(0,0,0) rotate(2deg) scale(1.02);
       }
       
       /* Reduce hover elevation while another card is being dragged */
@@ -411,6 +413,10 @@
         white-space:nowrap;
         border:0;
       }
+
+      /* Reduce hit testing turbulence; re-enable on dragged card */
+      body.drag-active #today-list { pointer-events: none; }
+      body.drag-active .task-swipe-container.dragging { pointer-events: auto; }
     </style>
   </head>
   <body>
@@ -419,10 +425,10 @@
     <main>
       <section id="tab-today">
                   <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.51-drag-perf</h2>
-          <div class="muted" style="margin-bottom:14px">Perf: transform-only movement with rAF, fewer layout writes during dragging.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.52-drag-no-jitter</h2>
+          <div class="muted" style="margin-bottom:14px">No-jitter: flex layout, translate3d + rAF, gated renders, smarter placeholder.</div>
 
-          <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
+          <div id="today-list" style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
           </div>
 
@@ -437,7 +443,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.51-drag-perf — active:0 done:0
+              build: STEP-1.52-drag-no-jitter — active:0 done:0
             </footer>
         </div>
       </section>
@@ -557,7 +563,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.51-drag-perf
+      build: STEP-1.52-drag-no-jitter
     </div>
 
     <script>
@@ -574,26 +580,11 @@
 
       function seedTasks() {
         const base = [
-          { 
-            id: generateId(), 
-            title: 'Deep Work: "Main project"', 
-            completed: false, 
-            tag: '2/4 subtasks • focus',
-            minutes: 25
-          },
-          { 
-            id: generateId(), 
-            title: 'Reply to messages', 
-            completed: false, 
-            tag: 'No subtasks'
-          },
-          { 
-            id: generateId(), 
-            title: 'Walk outside', 
-            completed: false, 
-            tag: 'Wellbeing', 
-            minutes: 15
-          }
+          { id: generateId(), title: 'Task A', completed: false, tag: 'Alpha', minutes: 15 },
+          { id: generateId(), title: 'Task B', completed: false, tag: 'Beta', minutes: 5 },
+          { id: generateId(), title: 'Task C', completed: false, tag: 'Gamma' },
+          { id: generateId(), title: 'Task D', completed: false, tag: 'Delta', minutes: 25 },
+          { id: generateId(), title: 'Task E', completed: false, tag: 'Epsilon' }
         ];
         localStorage.setItem(LS_KEY, JSON.stringify(base));
         return base;
@@ -1146,30 +1137,38 @@
           }
           
           if (isInListArea) {
-            if (taskCard && taskCard !== draggedElement && taskCard.draggable) {
-              // Determine if we should insert before or after based on cursor position
-              const rect = taskCard.getBoundingClientRect();
-              const insertAfter = clientY > rect.top + rect.height / 2;
-              
-              if (insertAfter) {
-                taskCard.parentNode.insertBefore(dragPlaceholder, taskCard.nextSibling);
-              } else {
-                taskCard.parentNode.insertBefore(dragPlaceholder, taskCard);
-              }
-            } else {
-              // If no specific task card, insert at the end of the list
-              const allTasks = todayList.querySelectorAll('.task-swipe-container[draggable="true"]');
-              const lastTask = allTasks[allTasks.length - 1];
-              if (lastTask && lastTask !== draggedElement) {
-                lastTask.parentNode.insertBefore(dragPlaceholder, lastTask.nextSibling);
-              } else if (todayList.children.length > 0 && todayList.lastChild !== dragPlaceholder) {
-                todayList.appendChild(dragPlaceholder);
-              }
-            }
-          } else if (dragPlaceholder && dragPlaceholder.parentNode) {
-            // If not in list area, remove placeholder to avoid flicker
-            dragPlaceholder.remove();
-          }
+             if (taskCard && taskCard !== draggedElement && taskCard.draggable) {
+               // Determine if we should insert before or after based on cursor position
+               const rect = taskCard.getBoundingClientRect();
+               const insertAfter = clientY > rect.top + rect.height / 2;
+               
+               const targetNode = insertAfter ? taskCard.nextSibling : taskCard;
+               if (dragPlaceholder !== targetNode) {
+                 if (insertAfter) {
+                   taskCard.parentNode.insertBefore(dragPlaceholder, taskCard.nextSibling);
+                 } else {
+                   taskCard.parentNode.insertBefore(dragPlaceholder, taskCard);
+                 }
+                 console.log('rAF move placeholder:', { after: insertAfter, target: taskCard.dataset.taskId });
+               }
+             } else {
+               // If no specific task card, insert at the end of the list
+               const allTasks = todayList.querySelectorAll('.task-swipe-container[draggable="true"]');
+               const lastTask = allTasks[allTasks.length - 1];
+               if (lastTask && lastTask !== draggedElement) {
+                 if (dragPlaceholder.previousSibling !== lastTask) {
+                   lastTask.parentNode.insertBefore(dragPlaceholder, lastTask.nextSibling);
+                   console.log('rAF append placeholder after last');
+                 }
+               } else if (todayList.children.length > 0 && todayList.lastChild !== dragPlaceholder) {
+                 todayList.appendChild(dragPlaceholder);
+                 console.log('rAF append placeholder at end');
+               }
+             }
+           } else if (dragPlaceholder && dragPlaceholder.parentNode) {
+             // If not in list area, remove placeholder to avoid flicker
+             dragPlaceholder.remove();
+           }
         });
       }
       
@@ -2281,7 +2280,7 @@
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.51-drag-perf — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.52-drag-no-jitter — active:${activeCount} done:${doneCount}`;
           }
         }
 
