@@ -424,8 +424,8 @@
     <main>
       <section id="tab-today">
                   <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.53-drag-sibling-flow</h2>
-          <div class="muted" style="margin-bottom:14px">Siblings flow around dragged card smoothly; pointer-events restored for list.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.54-drag-deadband</h2>
+          <div class="muted" style="margin-bottom:14px">Hysteresis deadband prevents flip-flop near midpoints; smoother reorder.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -442,7 +442,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.53-drag-sibling-flow — active:0 done:0
+              build: STEP-1.54-drag-deadband — active:0 done:0
             </footer>
         </div>
       </section>
@@ -562,7 +562,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.53-drag-sibling-flow
+      build: STEP-1.54-drag-deadband
     </div>
 
     <script>
@@ -839,6 +839,8 @@
       let dragMoveScheduled = false; // rAF throttle for drag transform updates
       let dragBaseLeft = 0; // Base left at drag start
       let dragBaseTop = 0;  // Base top at drag start
+      let lastPlaceholderAnchorId = null; // For hysteresis
+      let lastPlaceholderAfter = null;    // true if after, false if before
       let isGestureDecided = false; // Track if we've decided between drag and swipe
       let dragStartPos = { x: 0, y: 0 };
       let dragCurrentPos = { x: 0, y: 0 };
@@ -1139,7 +1141,21 @@
              if (taskCard && taskCard !== draggedElement && taskCard.draggable) {
                // Determine if we should insert before or after based on cursor position
                const rect = taskCard.getBoundingClientRect();
-               const insertAfter = clientY > rect.top + rect.height / 2;
+               // Hysteresis deadband: require >65% to switch to after, <35% to switch to before
+               const ratio = (clientY - rect.top) / rect.height;
+               let insertAfter;
+               const hysteresisAnchorChanged = lastPlaceholderAnchorId !== taskCard.dataset.taskId;
+               if (hysteresisAnchorChanged || lastPlaceholderAfter === null) {
+                 insertAfter = ratio > 0.5; // initial decision
+               } else {
+                 if (lastPlaceholderAfter) {
+                   // Currently after; only switch to before if clearly above 35%
+                   insertAfter = ratio >= 0.35;
+                 } else {
+                   // Currently before; only switch to after if clearly below 65%
+                   insertAfter = ratio > 0.65;
+                 }
+               }
                
                const targetNode = insertAfter ? taskCard.nextSibling : taskCard;
                if (dragPlaceholder !== targetNode) {
@@ -1149,6 +1165,8 @@
                    taskCard.parentNode.insertBefore(dragPlaceholder, taskCard);
                  }
                  console.log('rAF move placeholder:', { after: insertAfter, target: taskCard.dataset.taskId });
+                 lastPlaceholderAnchorId = taskCard.dataset.taskId;
+                 lastPlaceholderAfter = insertAfter;
                }
              } else {
                // If no specific task card, insert at the end of the list
@@ -1234,6 +1252,8 @@
         dragStartPos = { x: 0, y: 0 };
         dragCurrentPos = { x: 0, y: 0 };
         dragOffset = { x: 0, y: 0 };
+        lastPlaceholderAnchorId = null;
+        lastPlaceholderAfter = null;
         
         // Clean up potential drag state
         window._potentialDragElement = null;
@@ -2279,7 +2299,7 @@
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.53-drag-sibling-flow — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.54-drag-deadband — active:${activeCount} done:${doneCount}`;
           }
         }
 
