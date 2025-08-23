@@ -414,8 +414,7 @@
         border:0;
       }
 
-      /* Reduce hit testing turbulence; re-enable on dragged card */
-      body.drag-active #today-list { pointer-events: none; }
+      /* Allow siblings to be hit-tested while dragging; keep dragged card interactive */
       body.drag-active .task-swipe-container.dragging { pointer-events: auto; }
     </style>
   </head>
@@ -425,8 +424,8 @@
     <main>
       <section id="tab-today">
                   <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.52-drag-no-jitter</h2>
-          <div class="muted" style="margin-bottom:14px">No-jitter: flex layout, translate3d + rAF, gated renders, smarter placeholder.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.53-drag-sibling-flow</h2>
+          <div class="muted" style="margin-bottom:14px">Siblings flow around dragged card smoothly; pointer-events restored for list.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -443,7 +442,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.52-drag-no-jitter — active:0 done:0
+              build: STEP-1.53-drag-sibling-flow — active:0 done:0
             </footer>
         </div>
       </section>
@@ -563,7 +562,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.52-drag-no-jitter
+      build: STEP-1.53-drag-sibling-flow
     </div>
 
     <script>
@@ -2280,7 +2279,7 @@
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.52-drag-no-jitter — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.53-drag-sibling-flow — active:${activeCount} done:${doneCount}`;
           }
         }
 
