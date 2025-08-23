@@ -11,8 +11,15 @@
     "type": "git",
     "url": "git+https://github.com/funkeepanda/planner-preview.git"
   },
-  "keywords": ["planner", "preview", "static-site"],
+  "keywords": [
+    "planner",
+    "preview",
+    "static-site"
+  ],
   "author": "funkeepanda",
   "license": "MIT",
-  "homepage": "https://github.com/funkeepanda/planner-preview#readme"
+  "homepage": "https://github.com/funkeepanda/planner-preview#readme",
+  "dependencies": {
+    "puppeteer": "^24.17.0"
+  }
 }
