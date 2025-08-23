@@ -210,8 +210,8 @@
     <main>
       <section id="tab-today">
         <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.4.3-debug</h2>
-          <div class="muted" style="margin-bottom:14px">Added extensive logging to diagnose checkbox behavior.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.4.4-fix</h2>
+          <div class="muted" style="margin-bottom:14px">Direct checkbox event listeners (no delegation).</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -479,12 +479,22 @@
           timerDisplay = `<span style="font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08)">${task.minutes}m</span>`;
         }
         
-        // Controlled checkbox - only reads task.completed, no other state
-        card.innerHTML = `
-          <input type="checkbox" 
-                 data-role="toggle-done" 
-                 ${task.completed ? 'checked' : ''}
-                 aria-label="Mark ${task.title} ${task.completed ? 'incomplete' : 'complete'}">
+        // Create checkbox as DOM element to ensure events work
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.dataset.role = 'toggle-done';
+        checkbox.checked = task.completed;
+        checkbox.setAttribute('aria-label', `Mark ${task.title} ${task.completed ? 'incomplete' : 'complete'}`);
+        
+        // Add direct event listener to checkbox
+        checkbox.addEventListener('change', function(e) {
+          console.log('🔄 Direct checkbox change event fired for task:', task.id);
+          toggleComplete(task.id);
+        });
+        
+        // Create the rest with innerHTML
+        const contentDiv = document.createElement('div');
+        contentDiv.innerHTML = `
           <div style="flex:1">
             <div class="task-title" style="font-weight:600">${task.title}</div>
             ${tagLine}
@@ -493,6 +503,12 @@
           <button class="btn-start" data-role="timer-control" style="margin-left:8px;padding:6px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff">${buttonText}</button>
           ${resetLink}
         `;
+        
+        // Append checkbox and content
+        card.appendChild(checkbox);
+        while (contentDiv.firstChild) {
+          card.appendChild(contentDiv.firstChild);
+        }
         
         if (task.completed) {
           card.classList.add('task--done');
@@ -974,7 +990,16 @@
           }
         }
 
-        // Event listeners
+        // Event listeners with debug
+        console.log('🔧 Setting up event listeners...');
+        console.log('todayList found:', !!todayList);
+        console.log('completedList found:', !!completedList);
+        
+        // Add a simple click listener to test if ANY events work
+        todayList?.addEventListener('click', function(e) {
+          console.log('🖱️ Click detected on todayList:', e.target.tagName, e.target.type);
+        });
+        
         todayList?.addEventListener('change', handleCheckboxChange);
         completedList?.addEventListener('change', handleCheckboxChange);
         todayList?.addEventListener('click', handleTimerControl);
