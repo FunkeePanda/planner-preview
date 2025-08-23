@@ -64,23 +64,24 @@
         /* Ensure consistent height for smooth animations */
         min-height: 60px;
         height: auto; /* Allow content to determine height */
-        /* Establish stacking context to control child layering */
-        z-index: 0;
+        /* Force stacking context to control child layering */
+        z-index: 1;
+        isolation: isolate;
         /* No background - let task content be the only visible card */
       }
       
       .task-actions {
         position: absolute;
-        right: -2px; /* Slightly outside container to prevent edge visibility */
-        top: -1px;
-        bottom: -1px;
-        width: 82px; /* Slightly wider to ensure full coverage */
+        right: 0;
+        top: 0;
+        bottom: 0;
+        width: 80px;
         display: flex;
         align-items: center;
         justify-content: center;
         background: linear-gradient(135deg, rgba(255, 165, 0, 0.95), rgba(255, 140, 0, 0.95));
         border-radius: 0 12px 12px 0;
-        z-index: -1; /* Far behind content */
+        z-index: -10; /* Much lower than content */
         opacity: 1;
         /* No border or shadow in default state to prevent bleeding */
         border: none;
@@ -101,7 +102,7 @@
         left: 0;
         right: 0;
         bottom: 0; /* Ensure full coverage of container */
-        z-index: 10; /* Well above actions */
+        z-index: 100; /* Much higher than actions */
         /* Prevent content from becoming transparent during swipe */
         will-change: transform;
         backface-visibility: hidden;
@@ -148,10 +149,6 @@
       
       /* Enhanced styling when button is revealed */
       .task-swipe-container.swiped .task-actions {
-        right: 0; /* Move back to proper position when revealed */
-        top: 0;
-        bottom: 0;
-        width: 80px; /* Return to normal width */
         border: 1px solid rgba(255,255,255,.12);
         border-left: none;
         box-shadow: -2px 0 12px rgba(255, 165, 0, 0.4);
@@ -167,7 +164,7 @@
         }
         
         .task-actions {
-          width: 72px; /* Slightly wider for mobile */
+          width: 70px;
         }
         
         .edit-btn {
@@ -177,10 +174,6 @@
         
         .task-swipe-container.swiped .task-content {
           transform: translate3d(-70px, 0, 0);
-        }
-        
-        .task-swipe-container.swiped .task-actions {
-          width: 70px; /* Return to normal mobile width when revealed */
         }
       }
 
@@ -338,8 +331,8 @@
     <main>
       <section id="tab-today">
         <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.14-hidden</h2>
-          <div class="muted" style="margin-bottom:14px">Complete button hiding - positioned outside container with no shadows/borders until revealed.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.15-behind</h2>
+          <div class="muted" style="margin-bottom:14px">Fixed z-index with isolation - button now truly behind card (z-index: -10 vs 100).</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -356,7 +349,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.14-hidden — active:0 done:0
+              build: STEP-1.15-behind — active:0 done:0
             </footer>
         </div>
       </section>
@@ -448,7 +441,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.14-hidden
+      build: STEP-1.15-behind
     </div>
 
     <script>
@@ -1421,7 +1414,7 @@
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.14-hidden — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.15-behind — active:${activeCount} done:${doneCount}`;
           }
         }
 
@@ -1590,6 +1583,39 @@
           }
         };
 
+        // Test z-index layering
+        window.testZIndexLayering = function() {
+          console.log('🧪 Testing z-index layering...');
+          const containers = document.querySelectorAll('.task-swipe-container');
+          if (containers.length > 0) {
+            const firstContainer = containers[0];
+            const taskContent = firstContainer.querySelector('.task-content');
+            const taskActions = firstContainer.querySelector('.task-actions');
+            
+            if (taskActions && taskContent) {
+              const containerZ = parseInt(getComputedStyle(firstContainer).zIndex) || 0;
+              const actionsZ = parseInt(getComputedStyle(taskActions).zIndex) || 0;
+              const contentZ = parseInt(getComputedStyle(taskContent).zIndex) || 0;
+              
+              console.log('Z-index values:');
+              console.log('- Container:', containerZ);
+              console.log('- Actions:', actionsZ, '(should be negative)');
+              console.log('- Content:', contentZ, '(should be positive and higher)');
+              
+              const correctOrder = actionsZ < 0 && contentZ > 0 && contentZ > actionsZ;
+              console.log('Correct z-index order:', correctOrder ? '✅ YES' : '❌ NO');
+              
+              // Check isolation
+              const containerIsolation = getComputedStyle(firstContainer).isolation;
+              const contentIsolation = getComputedStyle(taskContent).isolation;
+              console.log('Container isolation:', containerIsolation);
+              console.log('Content isolation:', contentIsolation);
+              
+              console.log('✅ Z-index test complete');
+            }
+          }
+        };
+        
         // Test complete button hiding and drawer effect
         window.testCompleteHiding = function() {
           console.log('🧪 Testing complete button hiding and drawer effect...');
