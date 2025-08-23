@@ -210,8 +210,8 @@
     <main>
       <section id="tab-today">
         <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.4.4-fix</h2>
-          <div class="muted" style="margin-bottom:14px">Direct checkbox event listeners (no delegation).</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.3e</h2>
+          <div class="muted" style="margin-bottom:14px">Clear completed now removes tasks instead of reactivating them.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -228,7 +228,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.4.2 — active:0 done:0
+              build: STEP-1.3e — active:0 done:0
             </footer>
         </div>
       </section>
@@ -298,7 +298,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.4.2
+      build: STEP-1.3e
     </div>
 
     <script>
@@ -695,10 +695,14 @@
           });
         }
 
-        // Clear completed -> mark all as not completed (matches your React pattern)
+        // Clear completed -> remove completed tasks from storage
         function clearCompleted() {
           setTasks(prev => {
-            const next = prev.map(t => (t.completed ? { ...t, completed: false } : t));
+            const before = { active: prev.filter(t => !t.completed).length, done: prev.filter(t => t.completed).length };
+            const next = prev.filter(t => !t.completed);
+            const after = { active: next.filter(t => !t.completed).length, done: next.filter(t => t.completed).length };
+            
+            console.log('DevLog:', { step: 'clear-completed', before, after });
             return next;
           });
         }
@@ -933,7 +937,7 @@
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.4.2 — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.3e — active:${activeCount} done:${doneCount}`;
           }
         }
 
@@ -1046,6 +1050,28 @@
           } else {
             console.log('No active tasks to test');
           }
+        };
+
+        // Quick test for clear functionality
+        window.testClearCompleted = function() {
+          console.log('🧪 Testing Clear Completed...');
+          const before = { active: getActive().length, done: getDone().length };
+          console.log('Before clear:', before);
+          
+          if (before.done === 0) {
+            console.log('No completed tasks to clear. Add and complete a task first.');
+            return;
+          }
+          
+          clearCompleted();
+          
+          setTimeout(() => {
+            const after = { active: getActive().length, done: getDone().length };
+            console.log('After clear:', after);
+            
+            const success = after.done === 0 && after.active === before.active;
+            console.log(success ? '✅ Clear test PASSED' : '❌ Clear test FAILED');
+          }, 100);
         };
 
         // Expose functions globally
