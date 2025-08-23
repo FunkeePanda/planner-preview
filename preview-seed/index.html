@@ -408,8 +408,8 @@
     <main>
       <section id="tab-today">
         <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.33-restore-delete-animation</h2>
-          <div class="muted" style="margin-bottom:14px">Restored smooth slide-out animation during task deletion with proper DOM preservation.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.34-delayed-delete-animation</h2>
+          <div class="muted" style="margin-bottom:14px">Added delay to delete animation - starts after modal closes so user can see the smooth slide-out.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -426,7 +426,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.33-restore-delete-animation — active:0 done:0
+              build: STEP-1.34-delayed-delete-animation — active:0 done:0
             </footer>
         </div>
       </section>
@@ -534,7 +534,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.33-restore-delete-animation
+      build: STEP-1.34-delayed-delete-animation
     </div>
 
     <script>
@@ -1547,9 +1547,13 @@
         const deleteBackdrop = document.getElementById('delete-modal-backdrop');
         deleteBackdrop.removeAttribute('hidden');
         
-        // Close any open swipe actions
+        // Close any open swipe actions and reset transforms so user can see the task clearly
         document.querySelectorAll('.task-swipe-container.swiped').forEach(container => {
           container.classList.remove('swiped');
+          const taskContent = container.querySelector('.task-content');
+          if (taskContent) {
+            taskContent.style.transform = '';
+          }
         });
         
         // Focus the cancel button for accessibility
@@ -1568,8 +1572,11 @@
         
         const taskElement = document.querySelector(`[data-task-id="${taskToDelete}"]`);
         
+        // Close the modal first
+        closeDeleteModal();
+        
         if (taskElement) {
-          console.log('DevLog: Starting delete animation for task:', taskToDelete);
+          console.log('DevLog: Preparing delete animation for task:', taskToDelete);
           
           // Close any open swipe first
           taskElement.classList.remove('swiped');
@@ -1581,25 +1588,31 @@
           // Mark as animating to prevent interference from renderTasks
           taskElement.dataset.animatingDelete = 'true';
           
-          // Add smooth slide-out animation
-          taskElement.style.transition = 'transform 0.3s ease-out, opacity 0.3s ease-out';
-          taskElement.style.transform = 'translateX(-100%)';
-          taskElement.style.opacity = '0';
-          
-          // After animation completes, remove from state and DOM
+          // Wait for modal to close, then start animation
           setTimeout(() => {
-            console.log('DevLog: Animation complete, removing task from state:', taskToDelete);
+            console.log('DevLog: Starting delete animation for task:', taskToDelete);
             
-            // Remove the animating flag and element
-            taskElement.remove();
+            // Add smooth slide-out animation
+            taskElement.style.transition = 'transform 0.4s ease-out, opacity 0.4s ease-out';
+            taskElement.style.transform = 'translateX(-100%)';
+            taskElement.style.opacity = '0';
             
-            setTasks(prev => {
-              const newTasks = prev.filter(t => t.id !== taskToDelete);
-              console.log('DevLog: Tasks after deletion:', newTasks.length, 'remaining');
-              return newTasks;
-            });
-            createToast('Task deleted');
-          }, 300); // Match animation duration
+            // After animation completes, remove from state and DOM
+            setTimeout(() => {
+              console.log('DevLog: Animation complete, removing task from state:', taskToDelete);
+              
+              // Remove the animating flag and element
+              taskElement.remove();
+              
+              setTasks(prev => {
+                const newTasks = prev.filter(t => t.id !== taskToDelete);
+                console.log('DevLog: Tasks after deletion:', newTasks.length, 'remaining');
+                return newTasks;
+              });
+              createToast('Task deleted');
+            }, 400); // Match animation duration
+            
+          }, 200); // Delay to let modal close and user see the task
           
         } else {
           // Fallback if element not found
@@ -1607,8 +1620,6 @@
           setTasks(prev => prev.filter(t => t.id !== taskToDelete));
           createToast('Task deleted');
         }
-        
-        closeDeleteModal();
       }
       
       // Legacy function for backward compatibility
@@ -2118,7 +2129,7 @@
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.33-restore-delete-animation — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.34-delayed-delete-animation — active:${activeCount} done:${doneCount}`;
           }
         }
 
