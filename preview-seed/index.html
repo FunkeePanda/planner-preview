@@ -408,8 +408,8 @@
     <main>
       <section id="tab-today">
         <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.34-delayed-delete-animation</h2>
-          <div class="muted" style="margin-bottom:14px">Added delay to delete animation - starts after modal closes so user can see the smooth slide-out.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.35-cooler-delete-animation</h2>
+          <div class="muted" style="margin-bottom:14px">Slower, cooler delete animation with smooth cubic-bezier easing for maximum visual satisfaction.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -426,7 +426,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.34-delayed-delete-animation — active:0 done:0
+              build: STEP-1.35-cooler-delete-animation — active:0 done:0
             </footer>
         </div>
       </section>
@@ -534,7 +534,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.34-delayed-delete-animation
+      build: STEP-1.35-cooler-delete-animation
     </div>
 
     <script>
@@ -1592,8 +1592,8 @@
           setTimeout(() => {
             console.log('DevLog: Starting delete animation for task:', taskToDelete);
             
-            // Add smooth slide-out animation
-            taskElement.style.transition = 'transform 0.4s ease-out, opacity 0.4s ease-out';
+            // Add smooth, slower slide-out animation for cooler effect
+            taskElement.style.transition = 'transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
             taskElement.style.transform = 'translateX(-100%)';
             taskElement.style.opacity = '0';
             
@@ -1610,7 +1610,7 @@
                 return newTasks;
               });
               createToast('Task deleted');
-            }, 400); // Match animation duration
+            }, 800); // Match slower animation duration
             
           }, 200); // Delay to let modal close and user see the task
           
@@ -2129,7 +2129,7 @@
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.34-delayed-delete-animation — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.35-cooler-delete-animation — active:${activeCount} done:${doneCount}`;
           }
         }
 
