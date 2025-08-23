@@ -79,13 +79,16 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        background: linear-gradient(135deg, rgba(255, 165, 0, 0.95), rgba(255, 140, 0, 0.95));
+        /* Only show background when revealed */
+        background: transparent;
         border-radius: 0 12px 12px 0;
         z-index: -10; /* Much lower than content */
         opacity: 1;
         /* No border or shadow in default state to prevent bleeding */
         border: none;
         box-shadow: none;
+        /* Remove any potential visual artifacts */
+        outline: none;
       }
       
       .task-content {
@@ -114,7 +117,7 @@
       .edit-btn {
         width: 100%;
         height: 100%;
-        background: none;
+        background: transparent;
         border: none;
         color: white;
         font-size: 20px;
@@ -126,18 +129,23 @@
         /* Larger touch target for better mobile UX */
         min-width: 80px;
         min-height: 44px;
-        transition: background-color 0.2s ease;
+        /* Remove all visual artifacts when hidden */
+        outline: none;
+        box-shadow: none;
         /* Prevent text selection on swipe */
         user-select: none;
         -webkit-user-select: none;
+        /* No transitions to prevent visual glitches */
+        transition: none;
       }
       
-      .edit-btn:active {
+      /* Only show visual feedback when button is actually revealed */
+      .task-swipe-container.swiped .edit-btn:active {
         background: rgba(255, 255, 255, 0.15);
         transform: scale(0.95);
       }
       
-      .edit-btn:focus-visible {
+      .task-swipe-container.swiped .edit-btn:focus-visible {
         outline: 2px solid rgba(255, 255, 255, 0.8);
         outline-offset: 2px;
       }
@@ -149,6 +157,7 @@
       
       /* Enhanced styling when button is revealed */
       .task-swipe-container.swiped .task-actions {
+        background: linear-gradient(135deg, rgba(255, 165, 0, 0.95), rgba(255, 140, 0, 0.95));
         border: 1px solid rgba(255,255,255,.12);
         border-left: none;
         box-shadow: -2px 0 12px rgba(255, 165, 0, 0.4);
@@ -331,8 +340,8 @@
     <main>
       <section id="tab-today">
         <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.15-behind</h2>
-          <div class="muted" style="margin-bottom:14px">Fixed z-index with isolation - button now truly behind card (z-index: -10 vs 100).</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.16-invisible</h2>
+          <div class="muted" style="margin-bottom:14px">Removed all visual artifacts - button completely transparent until revealed by swipe.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -349,7 +358,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.15-behind — active:0 done:0
+              build: STEP-1.16-invisible — active:0 done:0
             </footer>
         </div>
       </section>
@@ -441,7 +450,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.15-behind
+      build: STEP-1.16-invisible
     </div>
 
     <script>
@@ -1414,7 +1423,7 @@
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.15-behind — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.16-invisible — active:${activeCount} done:${doneCount}`;
           }
         }
 
@@ -1583,35 +1592,68 @@
           }
         };
 
-        // Test z-index layering
-        window.testZIndexLayering = function() {
-          console.log('🧪 Testing z-index layering...');
+        // Test for visual artifacts and placeholders
+        window.testVisualArtifacts = function() {
+          console.log('🧪 Testing for visual artifacts and placeholders...');
           const containers = document.querySelectorAll('.task-swipe-container');
           if (containers.length > 0) {
             const firstContainer = containers[0];
             const taskContent = firstContainer.querySelector('.task-content');
             const taskActions = firstContainer.querySelector('.task-actions');
+            const editBtn = firstContainer.querySelector('.edit-btn');
             
-            if (taskActions && taskContent) {
+            if (taskActions && taskContent && editBtn) {
+              console.log('=== ELEMENT VISIBILITY TEST ===');
+              
+              // Check if elements are actually visible
+              const actionsRect = taskActions.getBoundingClientRect();
+              const contentRect = taskContent.getBoundingClientRect();
+              const btnRect = editBtn.getBoundingClientRect();
+              
+              console.log('Element visibility:');
+              console.log('- Actions visible area:', {
+                width: actionsRect.width,
+                height: actionsRect.height,
+                opacity: getComputedStyle(taskActions).opacity
+              });
+              console.log('- Button visible area:', {
+                width: btnRect.width,
+                height: btnRect.height,
+                opacity: getComputedStyle(editBtn).opacity,
+                display: getComputedStyle(editBtn).display
+              });
+              
+              // Check for any visual artifacts
+              const actionsStyle = getComputedStyle(taskActions);
+              const btnStyle = getComputedStyle(editBtn);
+              
+              console.log('=== STYLE ANALYSIS ===');
+              console.log('Actions styling:');
+              console.log('- Background:', actionsStyle.background);
+              console.log('- Border:', actionsStyle.border);
+              console.log('- Box-shadow:', actionsStyle.boxShadow);
+              console.log('- Border-radius:', actionsStyle.borderRadius);
+              
+              console.log('Button styling:');
+              console.log('- Background:', btnStyle.background);
+              console.log('- Border:', btnStyle.border);
+              console.log('- Outline:', btnStyle.outline);
+              console.log('- Color:', btnStyle.color);
+              
+              // Check z-index
               const containerZ = parseInt(getComputedStyle(firstContainer).zIndex) || 0;
               const actionsZ = parseInt(getComputedStyle(taskActions).zIndex) || 0;
               const contentZ = parseInt(getComputedStyle(taskContent).zIndex) || 0;
               
-              console.log('Z-index values:');
+              console.log('=== Z-INDEX CHECK ===');
               console.log('- Container:', containerZ);
               console.log('- Actions:', actionsZ, '(should be negative)');
-              console.log('- Content:', contentZ, '(should be positive and higher)');
+              console.log('- Content:', contentZ, '(should be positive)');
               
-              const correctOrder = actionsZ < 0 && contentZ > 0 && contentZ > actionsZ;
-              console.log('Correct z-index order:', correctOrder ? '✅ YES' : '❌ NO');
+              const behindCard = actionsZ < contentZ;
+              console.log('Button behind card:', behindCard ? '✅ YES' : '❌ NO');
               
-              // Check isolation
-              const containerIsolation = getComputedStyle(firstContainer).isolation;
-              const contentIsolation = getComputedStyle(taskContent).isolation;
-              console.log('Container isolation:', containerIsolation);
-              console.log('Content isolation:', contentIsolation);
-              
-              console.log('✅ Z-index test complete');
+              console.log('✅ Visual artifacts test complete');
             }
           }
         };
