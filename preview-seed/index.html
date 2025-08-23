@@ -408,8 +408,8 @@
     <main>
       <section id="tab-today">
         <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.30-smooth-drag</h2>
-          <div class="muted" style="margin-bottom:14px">Smooth drag-and-drop - card stays visible and follows finger/cursor perfectly during drag.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.31-fix-drop-zones</h2>
+          <div class="muted" style="margin-bottom:14px">Fixed drop zones - cards now move out of the way to show where you can drop during drag.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -426,7 +426,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.30-smooth-drag — active:0 done:0
+              build: STEP-1.31-fix-drop-zones — active:0 done:0
             </footer>
         </div>
       </section>
@@ -534,7 +534,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.30-smooth-drag
+      build: STEP-1.31-fix-drop-zones
     </div>
 
     <script>
@@ -966,10 +966,10 @@
           navigator.vibrate(50);
         }
         
-        // Create a placeholder in the original position
+        // Create an initial placeholder in the original position
         const placeholder = document.createElement('div');
         placeholder.className = 'drag-placeholder';
-        placeholder.innerHTML = 'Drop here';
+        placeholder.innerHTML = '⬇ Drop here';
         placeholder.style.height = rect.height + 'px';
         placeholder.style.margin = getComputedStyle(draggedElement).margin;
         draggedElement.parentNode.insertBefore(placeholder, draggedElement);
@@ -994,33 +994,62 @@
       function updateDropTarget(clientX, clientY) {
         if (!isDragMode) return;
         
-        // Find the element under the cursor (excluding the dragged element)
-        const elementUnder = document.elementFromPoint(clientX, clientY);
-        const taskCard = elementUnder?.closest('.task-swipe-container');
+        // Temporarily hide the dragged element to get element underneath
+        const originalPointerEvents = draggedElement.style.pointerEvents;
+        draggedElement.style.pointerEvents = 'none';
         
-                 if (taskCard && taskCard !== draggedElement && taskCard.draggable) {
-           // Remove existing placeholder
-           if (dragPlaceholder && dragPlaceholder.parentNode) {
-             dragPlaceholder.remove();
-           }
-           
-           // Create new placeholder
-           dragPlaceholder = document.createElement('div');
-           dragPlaceholder.className = 'drag-placeholder';
-           dragPlaceholder.innerHTML = '⬇ Drop here';
-           dragPlaceholder.style.height = (draggedElement.getBoundingClientRect().height) + 'px';
-           dragPlaceholder.style.margin = getComputedStyle(draggedElement).margin;
-           
-           // Determine if we should insert before or after
-           const rect = taskCard.getBoundingClientRect();
-           const insertAfter = clientY > rect.top + rect.height / 2;
-           
-           if (insertAfter) {
-             taskCard.parentNode.insertBefore(dragPlaceholder, taskCard.nextSibling);
-           } else {
-             taskCard.parentNode.insertBefore(dragPlaceholder, taskCard);
-           }
-         }
+        // Find the element under the cursor
+        const elementUnder = document.elementFromPoint(clientX, clientY);
+        
+        // Restore pointer events
+        draggedElement.style.pointerEvents = originalPointerEvents;
+        
+        // Find the task card or check if we're in the list area
+        const taskCard = elementUnder?.closest('.task-swipe-container');
+        const todayList = document.getElementById('today-list');
+        const isInListArea = todayList && todayList.contains(elementUnder);
+        
+        // Debug logging
+        if (taskCard) {
+          console.log('🎯 DevLog: Found task card:', taskCard.dataset.taskId);
+        }
+        
+        // Remove existing placeholder
+        if (dragPlaceholder && dragPlaceholder.parentNode) {
+          dragPlaceholder.remove();
+          dragPlaceholder = null;
+        }
+        
+        if (isInListArea) {
+          // Create new placeholder
+          dragPlaceholder = document.createElement('div');
+          dragPlaceholder.className = 'drag-placeholder';
+          dragPlaceholder.innerHTML = '⬇ Drop here';
+          dragPlaceholder.style.height = (draggedElement.getBoundingClientRect().height) + 'px';
+          dragPlaceholder.style.margin = getComputedStyle(draggedElement).margin;
+          
+          if (taskCard && taskCard !== draggedElement && taskCard.draggable) {
+            // Determine if we should insert before or after based on cursor position
+            const rect = taskCard.getBoundingClientRect();
+            const insertAfter = clientY > rect.top + rect.height / 2;
+            
+            if (insertAfter) {
+              taskCard.parentNode.insertBefore(dragPlaceholder, taskCard.nextSibling);
+            } else {
+              taskCard.parentNode.insertBefore(dragPlaceholder, taskCard);
+            }
+          } else {
+            // If no specific task card, insert at the end of the list
+            const allTasks = todayList.querySelectorAll('.task-swipe-container[draggable="true"]');
+            const lastTask = allTasks[allTasks.length - 1];
+            
+            if (lastTask && lastTask !== draggedElement) {
+              lastTask.parentNode.insertBefore(dragPlaceholder, lastTask.nextSibling);
+            } else if (todayList.children.length > 0) {
+              todayList.appendChild(dragPlaceholder);
+            }
+          }
+        }
       }
       
       function handleDragEnd(e) {
@@ -1979,7 +2008,7 @@
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.30-smooth-drag — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.31-fix-drop-zones — active:${activeCount} done:${doneCount}`;
           }
         }
 
