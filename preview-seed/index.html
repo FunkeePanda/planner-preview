@@ -419,8 +419,8 @@
     <main>
       <section id="tab-today">
                   <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.50-drag-smooth</h2>
-          <div class="muted" style="margin-bottom:14px">Smoother drag: gated renders, rAF-throttled placeholder, no flicker while moving.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.51-drag-perf</h2>
+          <div class="muted" style="margin-bottom:14px">Perf: transform-only movement with rAF, fewer layout writes during dragging.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -437,7 +437,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.50-drag-smooth — active:0 done:0
+              build: STEP-1.51-drag-perf — active:0 done:0
             </footer>
         </div>
       </section>
@@ -557,7 +557,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.50-drag-smooth
+      build: STEP-1.51-drag-perf
     </div>
 
     <script>
@@ -846,6 +846,9 @@
       let isDragMode = false;
       let isRenderSuppressedForDrag = false; // Gate renders while dragging
       let dropUpdateScheduled = false; // rAF throttle for drop target updates
+      let dragMoveScheduled = false; // rAF throttle for drag transform updates
+      let dragBaseLeft = 0; // Base left at drag start
+      let dragBaseTop = 0;  // Base top at drag start
       let isGestureDecided = false; // Track if we've decided between drag and swipe
       let dragStartPos = { x: 0, y: 0 };
       let dragCurrentPos = { x: 0, y: 0 };
@@ -1074,6 +1077,8 @@
         // Position the card at current location initially
         draggedElement.style.left = rect.left + 'px';
         draggedElement.style.top = rect.top + 'px';
+        dragBaseLeft = rect.left;
+        dragBaseTop = rect.top;
         
         // Haptic feedback
         if (navigator.vibrate) {
@@ -1092,17 +1097,19 @@
       
       function updateDragPosition(clientX, clientY) {
         if (!draggedElement || !isDragMode) return;
-        
-        // Update position smoothly - card follows finger/cursor
-        const newLeft = clientX - dragOffset.x;
-        const newTop = clientY - dragOffset.y;
-        
-        // Use transform for better performance
-        draggedElement.style.transform = `translate(${newLeft - parseFloat(draggedElement.style.left)}px, ${newTop - parseFloat(draggedElement.style.top)}px)`;
-        
-        // Also update actual position for accurate calculations
-        draggedElement.style.left = newLeft + 'px';
-        draggedElement.style.top = newTop + 'px';
+
+        const targetLeft = clientX - dragOffset.x;
+        const targetTop = clientY - dragOffset.y;
+        const dx = targetLeft - dragBaseLeft;
+        const dy = targetTop - dragBaseTop;
+
+        if (dragMoveScheduled) return;
+        dragMoveScheduled = true;
+        requestAnimationFrame(() => {
+          dragMoveScheduled = false;
+          // Transform-only movement for smoothness; keep fixed left/top as base
+          draggedElement.style.transform = `translate(${dx}px, ${dy}px)`;
+        });
       }
       
       function updateDropTarget(clientX, clientY) {
@@ -2274,7 +2281,7 @@
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.50-drag-smooth — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.51-drag-perf — active:${activeCount} done:${doneCount}`;
           }
         }
 
