@@ -408,8 +408,8 @@
     <main>
       <section id="tab-today">
         <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.43-fix-deletion</h2>
-          <div class="muted" style="margin-bottom:14px">FIXED the deletion bug! closeDeleteModal() was setting taskToDelete=null before deletion logic ran.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.44-restore-animation</h2>
+          <div class="muted" style="margin-bottom:14px">Restored deletion animation! Fixed timing by moving state update to when animation starts, not immediately.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -426,7 +426,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.43-fix-deletion — active:0 done:0
+              build: STEP-1.44-restore-animation — active:0 done:0
             </footer>
         </div>
       </section>
@@ -534,7 +534,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.43-fix-deletion
+      build: STEP-1.44-restore-animation
     </div>
 
     <script>
@@ -1609,14 +1609,6 @@
         if (taskElement) {
           console.log('DevLog: Preparing delete animation for task:', taskIdToDelete);
           
-          // IMMEDIATELY remove from state to prevent resurrection
-          console.log('DevLog: Removing task from state immediately to prevent resurrection');
-          setTasks(prev => {
-            const newTasks = prev.filter(t => t.id !== taskIdToDelete);
-            console.log('DevLog: Tasks after immediate deletion:', newTasks.length, 'remaining');
-            return newTasks;
-          });
-          
           // Close any open swipe first
           taskElement.classList.remove('swiped');
           const taskContent = taskElement.querySelector('.task-content');
@@ -1630,6 +1622,14 @@
           // Wait for modal to close, then start animation
           setTimeout(() => {
             console.log('DevLog: Starting delete animation for task:', taskIdToDelete);
+            
+            // REMOVE from state when animation starts (not immediately)
+            console.log('DevLog: Removing task from state as animation begins');
+            setTasks(prev => {
+              const newTasks = prev.filter(t => t.id !== taskIdToDelete);
+              console.log('DevLog: Tasks after deletion:', newTasks.length, 'remaining');
+              return newTasks;
+            });
             
             // Add smooth, slower slide-out animation for cooler effect
             taskElement.style.transition = 'transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
@@ -2188,7 +2188,7 @@
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.43-fix-deletion — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.44-restore-animation — active:${activeCount} done:${doneCount}`;
           }
         }
 
