@@ -341,8 +341,8 @@
     <main>
       <section id="tab-today">
         <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.19-shallow</h2>
-          <div class="muted" style="margin-bottom:14px">Fixed slide distance - card slides original distance but background extends further for deeper drawer look.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.20-bidirectional</h2>
+          <div class="muted" style="margin-bottom:14px">Fixed return swipe - card follows finger both directions with proper thresholds for open/close.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -359,7 +359,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.19-shallow — active:0 done:0
+              build: STEP-1.20-bidirectional — active:0 done:0
             </footer>
         </div>
       </section>
@@ -451,7 +451,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.19-shallow
+      build: STEP-1.20-bidirectional
     </div>
 
     <script>
@@ -766,26 +766,30 @@
           }
           lastMoveTime = now;
           
-          // Only allow left swipe (negative delta)
-          if (deltaX < 0) {
-            const distances = getSwipeDistances();
-            let translateX = deltaX;
-            
-            // Hard cap at max swipe distance - no overshoot allowed
-            translateX = Math.max(translateX, distances.maxSwipe);
-            
-            // Immediate, responsive transform - follows finger exactly
-            requestAnimationFrame(() => {
-              content.style.transform = `translate3d(${translateX}px, 0, 0)`;
-            });
-            
-          } else if (deltaX > 0) {
-            // Minimal resistance for right swipe with quick fallback
-            const resistedDelta = deltaX * 0.05;
-            requestAnimationFrame(() => {
-              content.style.transform = `translate3d(${Math.min(resistedDelta, 5)}px, 0, 0)`;
-            });
+          const distances = getSwipeDistances();
+          const isCurrentlyOpen = container.classList.contains('swiped');
+          let translateX = deltaX;
+          
+          if (isCurrentlyOpen) {
+            // When open, start from the open position
+            translateX = distances.maxSwipe + deltaX;
+            // Clamp between open position and closed position
+            translateX = Math.max(Math.min(translateX, 0), distances.maxSwipe);
+          } else {
+            // When closed, normal left swipe behavior
+            if (deltaX < 0) {
+              // Left swipe - cap at max swipe distance
+              translateX = Math.max(deltaX, distances.maxSwipe);
+            } else {
+              // Right swipe when closed - minimal resistance
+              translateX = Math.min(deltaX * 0.05, 5);
+            }
           }
+          
+          // Apply transform following finger exactly
+          requestAnimationFrame(() => {
+            content.style.transform = `translate3d(${translateX}px, 0, 0)`;
+          });
         }
         
         function handleEnd(e) {
@@ -795,19 +799,38 @@
           const deltaX = currentX - startX;
           const deltaTime = Date.now() - startTime;
           const distances = getSwipeDistances();
+          const isCurrentlyOpen = container.classList.contains('swiped');
           
           // Calculate final velocity for momentum-based decisions
           const finalVelocity = Math.abs(velocity);
-          
-          // More responsive threshold - easier to trigger with velocity
-          const shouldReveal = deltaX < distances.threshold || 
-                              (finalVelocity > 0.2 && deltaX < distances.threshold * 0.8);
+          const velocityThreshold = 0.3;
           
           // Restore smooth transitions with natural easing
           content.style.transition = 'transform 0.25s cubic-bezier(0.2, 0.0, 0.2, 1)';
           content.style.willChange = 'auto';
           
-          if (shouldReveal) {
+          let shouldBeOpen = false;
+          
+          if (isCurrentlyOpen) {
+            // When currently open, determine if it should stay open or close
+            const currentTranslate = distances.maxSwipe + deltaX;
+            const closeThreshold = distances.maxSwipe * 0.6; // 60% of the way back to close
+            
+            // Close if swiped far enough right OR fast right velocity
+            const shouldClose = currentTranslate > closeThreshold || 
+                               (velocity > velocityThreshold && deltaX > 0);
+            
+            shouldBeOpen = !shouldClose;
+          } else {
+            // When currently closed, determine if it should open
+            const openThreshold = distances.threshold; // 40% of max distance
+            
+            // Open if swiped far enough left OR fast left velocity
+            shouldBeOpen = deltaX < openThreshold || 
+                          (velocity < -velocityThreshold && deltaX < 0);
+          }
+          
+          if (shouldBeOpen) {
             container.classList.add('swiped');
             // Ensure exact positioning
             requestAnimationFrame(() => {
@@ -838,6 +861,20 @@
         // Prevent context menu on long press
         content.addEventListener('contextmenu', (e) => {
           if (isDragging) e.preventDefault();
+        });
+        
+        // Close on click outside or light tap when open
+        content.addEventListener('click', (e) => {
+          // Only close if it was a light tap (not a drag) and currently open
+          if (!isDragging && container.classList.contains('swiped') && Math.abs(currentX - startX) < 5) {
+            container.classList.remove('swiped');
+            content.style.transition = 'transform 0.25s cubic-bezier(0.2, 0.0, 0.2, 1)';
+            content.style.transform = 'translate3d(0, 0, 0)';
+            setTimeout(() => {
+              content.style.transform = '';
+              content.style.transition = '';
+            }, 250);
+          }
         });
         
         // Mouse events for desktop testing with improved handling
@@ -1424,7 +1461,7 @@
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.19-shallow — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.20-bidirectional — active:${activeCount} done:${doneCount}`;
           }
         }
 
