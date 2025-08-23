@@ -211,6 +211,12 @@
         transition: none !important; /* Disable transitions during drag */
       }
       
+      /* Reduce hover elevation while another card is being dragged */
+      body.drag-active .task-swipe-container[draggable="true"]:hover {
+        transform: none;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+      
       .task-swipe-container.drag-over {
         transform: translateY(-4px);
         box-shadow: 0 6px 20px rgba(108, 99, 255, 0.3);
@@ -413,8 +419,8 @@
     <main>
       <section id="tab-today">
                   <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.49-drag-stability</h2>
-          <div class="muted" style="margin-bottom:14px">Stabilized drag: disables swipe and keeps the card fixed while dragging.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.50-drag-smooth</h2>
+          <div class="muted" style="margin-bottom:14px">Smoother drag: gated renders, rAF-throttled placeholder, no flicker while moving.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -431,7 +437,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.49-drag-stability — active:0 done:0
+              build: STEP-1.50-drag-smooth — active:0 done:0
             </footer>
         </div>
       </section>
@@ -551,7 +557,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.49-drag-stability
+      build: STEP-1.50-drag-smooth
     </div>
 
     <script>
@@ -838,6 +844,8 @@
       let draggedTaskId = null;
       let dragPlaceholder = null;
       let isDragMode = false;
+      let isRenderSuppressedForDrag = false; // Gate renders while dragging
+      let dropUpdateScheduled = false; // rAF throttle for drop target updates
       let isGestureDecided = false; // Track if we've decided between drag and swipe
       let dragStartPos = { x: 0, y: 0 };
       let dragCurrentPos = { x: 0, y: 0 };
@@ -1028,6 +1036,8 @@
         
         console.log('🔥 DevLog: Starting drag mode for task:', draggedTaskId);
         isDragMode = true;
+        isRenderSuppressedForDrag = true;
+        document.body.classList.add('drag-active');
         
         // Clear any swipe state on the dragged card
         try {
@@ -1098,62 +1108,62 @@
       function updateDropTarget(clientX, clientY) {
         if (!isDragMode) return;
         
-        // Temporarily hide the dragged element to get element underneath
-        const originalPointerEvents = draggedElement.style.pointerEvents;
-        draggedElement.style.pointerEvents = 'none';
-        
-        // Find the element under the cursor
-        const elementUnder = document.elementFromPoint(clientX, clientY);
-        
-        // Restore pointer events
-        draggedElement.style.pointerEvents = originalPointerEvents;
-        
-        // Find the task card or check if we're in the list area
-        const taskCard = elementUnder?.closest('.task-swipe-container');
-        const todayList = document.getElementById('today-list');
-        const isInListArea = todayList && todayList.contains(elementUnder);
-        
-        // Debug logging
-        if (taskCard) {
-          console.log('🎯 DevLog: Found task card:', taskCard.dataset.taskId);
-        }
-        
-        // Remove existing placeholder
-        if (dragPlaceholder && dragPlaceholder.parentNode) {
-          dragPlaceholder.remove();
-          dragPlaceholder = null;
-        }
-        
-        if (isInListArea) {
-          // Create new placeholder
-          dragPlaceholder = document.createElement('div');
-          dragPlaceholder.className = 'drag-placeholder';
-          dragPlaceholder.innerHTML = '⬇ Drop here';
-          dragPlaceholder.style.height = (draggedElement.getBoundingClientRect().height) + 'px';
-          dragPlaceholder.style.margin = getComputedStyle(draggedElement).margin;
+        // Throttle updates to the next animation frame for smoothness
+        if (dropUpdateScheduled) return;
+        dropUpdateScheduled = true;
+        requestAnimationFrame(() => {
+          dropUpdateScheduled = false;
+
+          // Temporarily hide the dragged element to get element underneath
+          const originalPointerEvents = draggedElement.style.pointerEvents;
+          draggedElement.style.pointerEvents = 'none';
           
-          if (taskCard && taskCard !== draggedElement && taskCard.draggable) {
-            // Determine if we should insert before or after based on cursor position
-            const rect = taskCard.getBoundingClientRect();
-            const insertAfter = clientY > rect.top + rect.height / 2;
-            
-            if (insertAfter) {
-              taskCard.parentNode.insertBefore(dragPlaceholder, taskCard.nextSibling);
-            } else {
-              taskCard.parentNode.insertBefore(dragPlaceholder, taskCard);
-            }
-          } else {
-            // If no specific task card, insert at the end of the list
-            const allTasks = todayList.querySelectorAll('.task-swipe-container[draggable="true"]');
-            const lastTask = allTasks[allTasks.length - 1];
-            
-            if (lastTask && lastTask !== draggedElement) {
-              lastTask.parentNode.insertBefore(dragPlaceholder, lastTask.nextSibling);
-            } else if (todayList.children.length > 0) {
-              todayList.appendChild(dragPlaceholder);
-            }
+          // Find the element under the cursor
+          const elementUnder = document.elementFromPoint(clientX, clientY);
+          
+          // Restore pointer events
+          draggedElement.style.pointerEvents = originalPointerEvents;
+          
+          // Find the task card or check if we're in the list area
+          const taskCard = elementUnder?.closest('.task-swipe-container');
+          const todayList = document.getElementById('today-list');
+          const isInListArea = todayList && todayList.contains(elementUnder);
+          
+          // Remove existing placeholder if it exists elsewhere
+          if (!dragPlaceholder) {
+            dragPlaceholder = document.createElement('div');
+            dragPlaceholder.className = 'drag-placeholder';
+            dragPlaceholder.innerHTML = '⬇ Drop here';
+            dragPlaceholder.style.height = (draggedElement.getBoundingClientRect().height) + 'px';
+            dragPlaceholder.style.margin = getComputedStyle(draggedElement).margin;
           }
-        }
+          
+          if (isInListArea) {
+            if (taskCard && taskCard !== draggedElement && taskCard.draggable) {
+              // Determine if we should insert before or after based on cursor position
+              const rect = taskCard.getBoundingClientRect();
+              const insertAfter = clientY > rect.top + rect.height / 2;
+              
+              if (insertAfter) {
+                taskCard.parentNode.insertBefore(dragPlaceholder, taskCard.nextSibling);
+              } else {
+                taskCard.parentNode.insertBefore(dragPlaceholder, taskCard);
+              }
+            } else {
+              // If no specific task card, insert at the end of the list
+              const allTasks = todayList.querySelectorAll('.task-swipe-container[draggable="true"]');
+              const lastTask = allTasks[allTasks.length - 1];
+              if (lastTask && lastTask !== draggedElement) {
+                lastTask.parentNode.insertBefore(dragPlaceholder, lastTask.nextSibling);
+              } else if (todayList.children.length > 0 && todayList.lastChild !== dragPlaceholder) {
+                todayList.appendChild(dragPlaceholder);
+              }
+            }
+          } else if (dragPlaceholder && dragPlaceholder.parentNode) {
+            // If not in list area, remove placeholder to avoid flicker
+            dragPlaceholder.remove();
+          }
+        });
       }
       
       function handleDragEnd(e) {
@@ -1213,6 +1223,8 @@
         draggedElement = null;
         draggedTaskId = null;
         isDragMode = false;
+        isRenderSuppressedForDrag = false;
+        document.body.classList.remove('drag-active');
         isGestureDecided = false; // Reset gesture decision
         dragStartPos = { x: 0, y: 0 };
         dragCurrentPos = { x: 0, y: 0 };
@@ -1832,7 +1844,9 @@
           
           // Auto-save and re-render on state change
           saveTasks(next);  // Immediate save for user actions
-          renderTasks();
+          if (!isRenderSuppressedForDrag) {
+            renderTasks();
+          }
         }
 
         // Derived state (like useMemo)
@@ -2045,7 +2059,9 @@
             // Update state directly instead of using callback to avoid stale closure issues
             tasks = updatedTasks;
             debouncedSave(updatedTasks);
-            renderTasks();
+            if (!isRenderSuppressedForDrag) {
+              renderTasks();
+            }
           }
           
           // Clean up interval if no running timers
@@ -2258,7 +2274,7 @@
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.49-drag-stability — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.50-drag-smooth — active:${activeCount} done:${doneCount}`;
           }
         }
 
