@@ -408,8 +408,8 @@
     <main>
       <section id="tab-today">
         <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.38-fix-element-reuse</h2>
-          <div class="muted" style="margin-bottom:14px">Fixed animating element reuse - prevents deleted tasks from being resurrected during re-renders.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.39-debug-resurrection</h2>
+          <div class="muted" style="margin-bottom:14px">Added comprehensive debugging to investigate task resurrection - check console for detailed logs.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -426,7 +426,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.38-fix-element-reuse — active:0 done:0
+              build: STEP-1.39-debug-resurrection — active:0 done:0
             </footer>
         </div>
       </section>
@@ -534,7 +534,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.38-fix-element-reuse
+      build: STEP-1.39-debug-resurrection
     </div>
 
     <script>
@@ -578,12 +578,18 @@
 
       function loadTasks() {
         try {
+          console.log('📂 Loading tasks from localStorage...');
           const raw = localStorage.getItem(LS_KEY);
-          if (!raw) return seedTasks();
+          if (!raw) {
+            console.log('📂 No tasks found, seeding default tasks');
+            return seedTasks();
+          }
           const parsed = JSON.parse(raw);
+          console.log('📂 Loaded tasks from storage:', parsed.length, 'tasks');
+          console.log('📂 Task IDs loaded:', parsed.map(t => `${t.id}:${t.title}`));
           
           // Migration-friendly task normalization
-          return parsed.map((t, index) => ({
+          const normalized = parsed.map((t, index) => ({
             id: String(t.id || generateId()),
             title: String(t.title || 'Untitled'),
             note: t.note || '',
@@ -601,6 +607,9 @@
               updatedAt: Date.now()
             } : null)
           }));
+          
+          console.log('📂 Normalized tasks:', normalized.length, normalized.map(t => `${t.id}:${t.title}`));
+          return normalized;
         } catch (e) {
           console.warn('Failed to parse stored tasks:', e);
           return seedTasks();
@@ -609,7 +618,10 @@
 
       function saveTasks(tasks) {
         try {
+          console.log('💾 Saving tasks to localStorage:', tasks.length, 'tasks');
+          console.log('💾 Task IDs being saved:', tasks.map(t => `${t.id}:${t.title}`));
           localStorage.setItem(LS_KEY, JSON.stringify(tasks));
+          console.log('💾 Save successful');
         } catch (e) {
           console.warn('Failed to store tasks:', e);
         }
@@ -1752,6 +1764,13 @@
           // Handle both direct values and updater functions (like React setState)
           const prev = tasks;
           const next = typeof updater === 'function' ? updater(prev) : updater;
+          
+          // Debug logging for resurrection investigation
+          console.log('🔍 setTasks called');
+          console.log('🔍 Previous tasks:', prev.length, prev.map(t => `${t.id}:${t.title}`));
+          console.log('🔍 Next tasks:', next.length, next.map(t => `${t.id}:${t.title}`));
+          console.log('🔍 Call stack:', new Error().stack);
+          
           tasks = next;
           
           // Auto-save and re-render on state change
@@ -2154,7 +2173,7 @@
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.38-fix-element-reuse — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.39-debug-resurrection — active:${activeCount} done:${doneCount}`;
           }
         }
 
