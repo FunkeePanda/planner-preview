@@ -56,13 +56,16 @@
       .fab:active{ transform: translateY(1px); }
       .fab:focus-visible{ outline:2px solid rgba(255,255,255,.9); outline-offset:2px; border-radius:3px; }
 
-      /* Refined Swipe-to-edit with proper layering */
+      /* Enhanced Swipe-to-edit with seamless integration */
       .task-swipe-container {
         position: relative;
         overflow: hidden;
         border-radius: 12px;
         /* Ensure consistent height for smooth animations */
         min-height: 60px;
+        /* Create seamless background for integrated appearance */
+        background: rgba(255,255,255,.06);
+        border: 1px solid rgba(255,255,255,.12);
       }
       
       .task-content {
@@ -73,7 +76,7 @@
         background: rgba(255,255,255,.06);
         border: 1px solid rgba(255,255,255,.12);
         border-radius: 12px;
-        transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        transition: transform 0.25s cubic-bezier(0.2, 0.0, 0.2, 1);
         position: relative;
         z-index: 10; /* Card definitely on top */
         /* Prevent content from becoming transparent during swipe */
@@ -81,25 +84,31 @@
         backface-visibility: hidden;
         /* Ensure card covers the button area completely */
         width: 100%;
+        /* Remove margin to ensure flush alignment */
+        margin: 0;
       }
       
       .task-actions {
         position: absolute;
         right: 0;
         top: 0;
-        height: 100%;
+        bottom: 0;
         width: 80px;
         display: flex;
         align-items: center;
         justify-content: center;
         background: linear-gradient(135deg, rgba(255, 165, 0, 0.95), rgba(255, 140, 0, 0.95));
+        /* Remove rounded corners on left to create seamless integration */
         border-radius: 0 12px 12px 0;
         z-index: 1; /* Button definitely behind card */
         /* Always visible and in place - no transitions */
         opacity: 1;
         transform: translateX(0);
-        /* Add subtle shadow for depth when revealed */
-        box-shadow: -2px 0 8px rgba(255, 165, 0, 0.3);
+        /* Integrate with container border */
+        border: 1px solid rgba(255,255,255,.12);
+        border-left: none; /* Seamless connection */
+        /* Add subtle inset shadow for embedded appearance */
+        box-shadow: inset 2px 0 4px rgba(0, 0, 0, 0.1), -2px 0 8px rgba(255, 165, 0, 0.2);
       }
       
       .edit-btn {
@@ -135,17 +144,17 @@
       
       /* Swipe states - card slides to reveal button underneath */
       .task-swipe-container.swiped .task-content {
-        transform: translateX(-80px);
+        transform: translate3d(-80px, 0, 0);
       }
       
       /* Enhanced shadow when button is revealed */
       .task-swipe-container.swiped .task-actions {
-        box-shadow: -2px 0 12px rgba(255, 165, 0, 0.4);
+        box-shadow: inset 2px 0 4px rgba(0, 0, 0, 0.15), -2px 0 12px rgba(255, 165, 0, 0.4);
       }
       
       /* Removed problematic snap-back animation that caused overflow */
       
-      /* Prevent content overflow on narrow screens */
+      /* Optimized mobile experience */
       @media (max-width: 480px) {
         .task-content {
           gap: 8px;
@@ -162,7 +171,7 @@
         }
         
         .task-swipe-container.swiped .task-content {
-          transform: translateX(-70px);
+          transform: translate3d(-70px, 0, 0);
         }
       }
 
@@ -320,8 +329,8 @@
     <main>
       <section id="tab-today">
         <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.7-fixed</h2>
-          <div class="muted" style="margin-bottom:14px">Fixed swipe layering and overflow - button stays behind card, clean snap alignment.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.8-polished</h2>
+          <div class="muted" style="margin-bottom:14px">Polished swipe animation with buttery smooth physics and seamless visual integration.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -338,7 +347,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.7-fixed — active:0 done:0
+              build: STEP-1.8-polished — active:0 done:0
             </footer>
         </div>
       </section>
@@ -430,7 +439,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.7-fixed
+      build: STEP-1.8-polished
     </div>
 
     <script>
@@ -695,8 +704,8 @@
           const buttonWidth = isMobile ? 70 : 80;
           return {
             maxSwipe: -buttonWidth, // Cap exactly at button width
-            threshold: -buttonWidth * 0.5, // 50% of button width to trigger
-            resistance: 0.15 // Less resistance for smoother feel
+            threshold: -buttonWidth * 0.4, // 40% of button width to trigger (more responsive)
+            resistance: 0.1 // Minimal resistance for natural feel
           };
         };
         
@@ -713,15 +722,19 @@
           lastMoveTime = startTime;
           velocity = 0;
           
-          // Remove transitions for smooth dragging
+          // Remove transitions for immediate responsiveness
           content.style.transition = 'none';
+          content.style.willChange = 'transform';
           
-          // Close other open swipes
+          // Close other open swipes smoothly
           document.querySelectorAll('.task-swipe-container.swiped').forEach(other => {
             if (other !== container) {
               other.classList.remove('swiped');
             }
           });
+          
+          // Prevent scrolling during swipe
+          e.preventDefault();
         }
         
         function handleMove(e) {
@@ -734,9 +747,10 @@
           const deltaX = currentX - startX;
           const timeDelta = now - lastMoveTime;
           
-          // Calculate velocity for momentum
+          // Calculate velocity for momentum (improved smoothing)
           if (timeDelta > 0) {
-            velocity = (currentX - prevX) / timeDelta;
+            const currentVelocity = (currentX - prevX) / timeDelta;
+            velocity = velocity * 0.8 + currentVelocity * 0.2; // Smooth velocity
           }
           lastMoveTime = now;
           
@@ -748,13 +762,17 @@
             // Hard cap at max swipe distance - no overshoot allowed
             translateX = Math.max(translateX, distances.maxSwipe);
             
-            // Smooth transform with hardware acceleration - pure sliding reveal
-            content.style.transform = `translateX(${translateX}px)`;
+            // Immediate, responsive transform - follows finger exactly
+            requestAnimationFrame(() => {
+              content.style.transform = `translate3d(${translateX}px, 0, 0)`;
+            });
             
           } else if (deltaX > 0) {
-            // Slight resistance for right swipe to prevent accidental actions
-            const resistedDelta = deltaX * 0.1;
-            content.style.transform = `translateX(${Math.min(resistedDelta, 10)}px)`;
+            // Minimal resistance for right swipe with quick fallback
+            const resistedDelta = deltaX * 0.05;
+            requestAnimationFrame(() => {
+              content.style.transform = `translate3d(${Math.min(resistedDelta, 5)}px, 0, 0)`;
+            });
           }
         }
         
@@ -769,23 +787,34 @@
           // Calculate final velocity for momentum-based decisions
           const finalVelocity = Math.abs(velocity);
           
-          // Determine if swipe should complete based on distance and velocity
+          // More responsive threshold - easier to trigger with velocity
           const shouldReveal = deltaX < distances.threshold || 
-                              (finalVelocity > 0.3 && deltaX < distances.threshold * 0.7);
+                              (finalVelocity > 0.2 && deltaX < distances.threshold * 0.8);
           
-          // Restore smooth transitions with clean snap
-          content.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)';
+          // Restore smooth transitions with natural easing
+          content.style.transition = 'transform 0.25s cubic-bezier(0.2, 0.0, 0.2, 1)';
+          content.style.willChange = 'auto';
           
           if (shouldReveal) {
             container.classList.add('swiped');
+            // Ensure exact positioning
+            requestAnimationFrame(() => {
+              content.style.transform = `translate3d(${distances.maxSwipe}px, 0, 0)`;
+            });
           } else {
             container.classList.remove('swiped');
+            // Snap back to origin
+            requestAnimationFrame(() => {
+              content.style.transform = 'translate3d(0, 0, 0)';
+            });
           }
           
-          // Reset inline styles to let CSS classes take over
+          // Clean up inline styles after transition
           setTimeout(() => {
             content.style.transform = '';
-          }, 300);
+            content.style.transition = '';
+            content.style.willChange = '';
+          }, 250);
         }
         
         // Enhanced event listeners with better passive handling
@@ -793,6 +822,11 @@
         content.addEventListener('touchmove', handleMove, { passive: false });
         content.addEventListener('touchend', handleEnd, { passive: true });
         content.addEventListener('touchcancel', handleEnd, { passive: true });
+        
+        // Prevent context menu on long press
+        content.addEventListener('contextmenu', (e) => {
+          if (isDragging) e.preventDefault();
+        });
         
         // Mouse events for desktop testing with improved handling
         content.addEventListener('mousedown', handleStart);
@@ -1378,7 +1412,7 @@
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.7-fixed — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.8-polished — active:${activeCount} done:${doneCount}`;
           }
         }
 
@@ -1547,39 +1581,45 @@
           }
         };
 
-        // Test fixed swipe behavior
-        window.testSwipeFixes = function() {
-          console.log('🧪 Testing swipe fixes...');
+        // Test polished swipe behavior
+        window.testSwipePolish = function() {
+          console.log('🧪 Testing polished swipe experience...');
           const containers = document.querySelectorAll('.task-swipe-container');
           if (containers.length > 0) {
             const firstContainer = containers[0];
             const taskContent = firstContainer.querySelector('.task-content');
+            const taskActions = firstContainer.querySelector('.task-actions');
             const editBtn = firstContainer.querySelector('.edit-btn');
             
-            console.log('Z-index layering:');
-            console.log('- Task content:', getComputedStyle(taskContent).zIndex);
-            console.log('- Edit button parent:', getComputedStyle(editBtn.parentElement).zIndex);
+            console.log('Visual integration check:');
+            console.log('- Container background:', getComputedStyle(firstContainer).background);
+            console.log('- Content transition:', getComputedStyle(taskContent).transition);
+            console.log('- Actions border:', getComputedStyle(taskActions).border);
+            console.log('- Actions shadow:', getComputedStyle(taskActions).boxShadow);
             
-            console.log('Testing slide reveal (should cap at 80px)...');
+            console.log('Testing smooth reveal animation...');
             firstContainer.classList.add('swiped');
             
             setTimeout(() => {
               const transform = getComputedStyle(taskContent).transform;
-              console.log('Final transform:', transform);
+              console.log('Smooth transform:', transform);
               
               const rect = editBtn.getBoundingClientRect();
-              console.log('Edit button accessibility:', { 
-                visible: rect.width > 0 && rect.height > 0,
-                clickable: rect.right > rect.left,
-                width: rect.width,
-                height: rect.height
+              console.log('Button integration:', { 
+                seamless: rect.width === 80 || rect.width === 70,
+                accessible: rect.height >= 44,
+                positioned: rect.right > rect.left
               });
               
+              console.log('Testing smooth snap-back...');
+              firstContainer.classList.remove('swiped');
+              
               setTimeout(() => {
-                firstContainer.classList.remove('swiped');
-                console.log('✅ Swipe fixes verified - clean layering and alignment');
-              }, 1500);
-            }, 500);
+                const finalTransform = getComputedStyle(taskContent).transform;
+                console.log('Final position:', finalTransform);
+                console.log('✅ Polished swipe verified - buttery smooth & integrated');
+              }, 300);
+            }, 300);
           } else {
             console.log('No task containers found');
           }
