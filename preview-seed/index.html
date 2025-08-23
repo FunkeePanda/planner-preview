@@ -406,8 +406,8 @@
     <main>
       <section id="tab-today">
         <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.28-debug-drag</h2>
-          <div class="muted" style="margin-bottom:14px">Debugging drag-and-drop - added console logs and investigating swipe gesture conflicts.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.29-custom-drag</h2>
+          <div class="muted" style="margin-bottom:14px">Custom drag-and-drop implementation - works on both desktop and mobile with touch support.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:grid;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -424,7 +424,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.28-debug-drag — active:0 done:0
+              build: STEP-1.29-custom-drag — active:0 done:0
             </footer>
         </div>
       </section>
@@ -532,7 +532,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.28-debug-drag
+      build: STEP-1.29-custom-drag
     </div>
 
     <script>
@@ -802,149 +802,235 @@
         return swipeContainer;
       }
       
-      // Drag and drop functionality
+      // Custom drag and drop functionality (works on mobile and desktop)
       let draggedElement = null;
       let draggedTaskId = null;
       let dragPlaceholder = null;
+      let isDragMode = false;
+      let dragStartPos = { x: 0, y: 0 };
+      let dragCurrentPos = { x: 0, y: 0 };
+      let dragOffset = { x: 0, y: 0 };
+      let dragThreshold = 10; // pixels to move before starting drag
       
       function addDragAndDropHandlers() {
         const todayList = document.getElementById('today-list');
         
-        // Add event listeners to the container for event delegation
-        todayList.addEventListener('dragstart', handleDragStart);
-        todayList.addEventListener('dragover', handleDragOver);
-        todayList.addEventListener('dragenter', handleDragEnter);
-        todayList.addEventListener('dragleave', handleDragLeave);
-        todayList.addEventListener('drop', handleDrop);
-        todayList.addEventListener('dragend', handleDragEnd);
+        // Add custom drag handlers for both mouse and touch
+        todayList.addEventListener('mousedown', handleDragMouseDown);
+        todayList.addEventListener('touchstart', handleDragTouchStart, { passive: false });
+        
+        // Global handlers for drag move and end
+        document.addEventListener('mousemove', handleDragMouseMove);
+        document.addEventListener('touchmove', handleDragTouchMove, { passive: false });
+        document.addEventListener('mouseup', handleDragEnd);
+        document.addEventListener('touchend', handleDragEnd);
+        document.addEventListener('touchcancel', handleDragEnd);
       }
       
-      function handleDragStart(e) {
-        console.log('🔥 DevLog: handleDragStart fired!', e.target);
-        const taskCard = e.target.closest('.task-swipe-container');
-        console.log('🔥 DevLog: taskCard found:', taskCard, 'draggable:', taskCard?.draggable);
-        
-        if (!taskCard || !taskCard.draggable) {
-          console.log('🔥 DevLog: No taskCard or not draggable, returning');
+      function handleDragMouseDown(e) {
+        // Don't interfere with buttons, inputs, or edit actions
+        if (e.target.closest('.edit-btn') || e.target.closest('.delete-btn') || 
+            e.target.closest('input') || e.target.closest('button') || 
+            e.target.closest('.task-actions')) {
           return;
         }
         
+        const taskCard = e.target.closest('.task-swipe-container');
+        if (!taskCard || !taskCard.draggable || taskCard.classList.contains('task--done')) {
+          return;
+        }
+        
+        console.log('🔥 DevLog: Mouse down on draggable task:', taskCard.dataset.taskId);
+        
+        dragStartPos.x = e.clientX;
+        dragStartPos.y = e.clientY;
         draggedElement = taskCard;
         draggedTaskId = taskCard.dataset.taskId;
         
-        // Add dragging class for visual feedback
-        taskCard.classList.add('dragging');
+        // Calculate offset from mouse to element top-left
+        const rect = taskCard.getBoundingClientRect();
+        dragOffset.x = e.clientX - rect.left;
+        dragOffset.y = e.clientY - rect.top;
         
-        // Set drag data
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/html', taskCard.outerHTML);
+        e.preventDefault();
+      }
+      
+      function handleDragTouchStart(e) {
+        // Don't interfere with buttons, inputs, or edit actions
+        if (e.target.closest('.edit-btn') || e.target.closest('.delete-btn') || 
+            e.target.closest('input') || e.target.closest('button') || 
+            e.target.closest('.task-actions')) {
+          return;
+        }
         
-        // Haptic feedback if available
+        const taskCard = e.target.closest('.task-swipe-container');
+        if (!taskCard || !taskCard.draggable || taskCard.classList.contains('task--done')) {
+          return;
+        }
+        
+        console.log('🔥 DevLog: Touch start on draggable task:', taskCard.dataset.taskId);
+        
+        const touch = e.touches[0];
+        dragStartPos.x = touch.clientX;
+        dragStartPos.y = touch.clientY;
+        draggedElement = taskCard;
+        draggedTaskId = taskCard.dataset.taskId;
+        
+        // Calculate offset from touch to element top-left
+        const rect = taskCard.getBoundingClientRect();
+        dragOffset.x = touch.clientX - rect.left;
+        dragOffset.y = touch.clientY - rect.top;
+        
+        e.preventDefault();
+      }
+      
+      function handleDragMouseMove(e) {
+        if (!draggedElement) return;
+        
+        dragCurrentPos.x = e.clientX;
+        dragCurrentPos.y = e.clientY;
+        
+        // Check if we've moved enough to start dragging
+        const deltaX = Math.abs(dragCurrentPos.x - dragStartPos.x);
+        const deltaY = Math.abs(dragCurrentPos.y - dragStartPos.y);
+        
+        if (!isDragMode && (deltaX > dragThreshold || deltaY > dragThreshold)) {
+          startDragMode();
+        }
+        
+        if (isDragMode) {
+          updateDragPosition(e.clientX, e.clientY);
+          updateDropTarget(e.clientX, e.clientY);
+        }
+      }
+      
+      function handleDragTouchMove(e) {
+        if (!draggedElement) return;
+        
+        const touch = e.touches[0];
+        dragCurrentPos.x = touch.clientX;
+        dragCurrentPos.y = touch.clientY;
+        
+        // Check if we've moved enough to start dragging
+        const deltaX = Math.abs(dragCurrentPos.x - dragStartPos.x);
+        const deltaY = Math.abs(dragCurrentPos.y - dragStartPos.y);
+        
+        if (!isDragMode && (deltaX > dragThreshold || deltaY > dragThreshold)) {
+          startDragMode();
+        }
+        
+        if (isDragMode) {
+          updateDragPosition(touch.clientX, touch.clientY);
+          updateDropTarget(touch.clientX, touch.clientY);
+          e.preventDefault(); // Prevent scrolling during drag
+        }
+      }
+      
+      function startDragMode() {
+        if (!draggedElement) return;
+        
+        console.log('🔥 DevLog: Starting drag mode for task:', draggedTaskId);
+        isDragMode = true;
+        
+        // Add visual feedback
+        draggedElement.classList.add('dragging');
+        draggedElement.style.position = 'fixed';
+        draggedElement.style.zIndex = '1000';
+        draggedElement.style.pointerEvents = 'none';
+        draggedElement.style.width = draggedElement.offsetWidth + 'px';
+        
+        // Haptic feedback
         if (navigator.vibrate) {
           navigator.vibrate(50);
         }
         
-        console.log('🔥 DevLog: Drag started for task:', draggedTaskId);
+        // Create a placeholder in the original position
+        const placeholder = document.createElement('div');
+        placeholder.className = 'drag-placeholder';
+        placeholder.innerHTML = 'Drop here';
+        placeholder.style.height = draggedElement.offsetHeight + 'px';
+        draggedElement.parentNode.insertBefore(placeholder, draggedElement);
+        dragPlaceholder = placeholder;
       }
       
-      function handleDragOver(e) {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
+      function updateDragPosition(clientX, clientY) {
+        if (!draggedElement || !isDragMode) return;
         
-        const taskCard = e.target.closest('.task-swipe-container');
-        if (!taskCard || taskCard === draggedElement) return;
-        
-        // Get all draggable elements
-        const draggableElements = [...document.querySelectorAll('#today-list .task-swipe-container[draggable="true"]')];
-        const draggedIndex = draggableElements.indexOf(draggedElement);
-        const targetIndex = draggableElements.indexOf(taskCard);
-        
-        // Remove existing placeholder
-        if (dragPlaceholder) {
-          dragPlaceholder.remove();
-          dragPlaceholder = null;
-        }
-        
-        // Create placeholder
-        dragPlaceholder = document.createElement('div');
-        dragPlaceholder.className = 'drag-placeholder';
-        dragPlaceholder.innerHTML = 'Drop here';
-        
-        // Insert placeholder at the correct position
-        if (draggedIndex < targetIndex) {
-          taskCard.parentNode.insertBefore(dragPlaceholder, taskCard.nextSibling);
-        } else {
-          taskCard.parentNode.insertBefore(dragPlaceholder, taskCard);
-        }
+        draggedElement.style.left = (clientX - dragOffset.x) + 'px';
+        draggedElement.style.top = (clientY - dragOffset.y) + 'px';
       }
       
-      function handleDragEnter(e) {
-        e.preventDefault();
-        const taskCard = e.target.closest('.task-swipe-container');
-        if (taskCard && taskCard !== draggedElement) {
-          taskCard.classList.add('drag-over');
-        }
-      }
-      
-      function handleDragLeave(e) {
-        const taskCard = e.target.closest('.task-swipe-container');
-        if (taskCard) {
-          taskCard.classList.remove('drag-over');
-        }
-      }
-      
-      function handleDrop(e) {
-        e.preventDefault();
+      function updateDropTarget(clientX, clientY) {
+        if (!isDragMode) return;
         
-        if (!draggedElement || !draggedTaskId) return;
+        // Find the element under the cursor (excluding the dragged element)
+        const elementUnder = document.elementFromPoint(clientX, clientY);
+        const taskCard = elementUnder?.closest('.task-swipe-container');
         
-        // Get all draggable elements
-        const draggableElements = [...document.querySelectorAll('#today-list .task-swipe-container[draggable="true"]')];
-        
-        let newIndex = 0;
-        if (dragPlaceholder) {
-          // Find the index where the placeholder is
-          const allChildren = [...document.getElementById('today-list').children];
-          newIndex = allChildren.indexOf(dragPlaceholder);
-          
-          // Adjust for the dragged element being removed from its original position
-          const draggedIndex = draggableElements.indexOf(draggedElement);
-          if (draggedIndex < newIndex) {
-            newIndex--;
+        if (taskCard && taskCard !== draggedElement && taskCard.draggable) {
+          // Remove existing placeholder
+          if (dragPlaceholder) {
+            dragPlaceholder.remove();
           }
-        }
-        
-        console.log('DevLog: Dropping task at index:', newIndex);
-        
-        // Update sort order in state
-        updateTaskSortOrder(draggedTaskId, newIndex);
-        
-        // Clean up
-        if (dragPlaceholder) {
-          dragPlaceholder.remove();
-          dragPlaceholder = null;
+          
+          // Create new placeholder
+          dragPlaceholder = document.createElement('div');
+          dragPlaceholder.className = 'drag-placeholder';
+          dragPlaceholder.innerHTML = 'Drop here';
+          dragPlaceholder.style.height = draggedElement.offsetHeight + 'px';
+          
+          // Determine if we should insert before or after
+          const rect = taskCard.getBoundingClientRect();
+          const insertAfter = clientY > rect.top + rect.height / 2;
+          
+          if (insertAfter) {
+            taskCard.parentNode.insertBefore(dragPlaceholder, taskCard.nextSibling);
+          } else {
+            taskCard.parentNode.insertBefore(dragPlaceholder, taskCard);
+          }
         }
       }
       
       function handleDragEnd(e) {
-        const taskCard = e.target.closest('.task-swipe-container');
-        if (taskCard) {
-          taskCard.classList.remove('dragging');
+        if (!draggedElement) return;
+        
+        console.log('🔥 DevLog: Drag end for task:', draggedTaskId);
+        
+        if (isDragMode && dragPlaceholder) {
+          // Calculate new position based on placeholder
+          const todayList = document.getElementById('today-list');
+          const allChildren = [...todayList.children];
+          const placeholderIndex = allChildren.indexOf(dragPlaceholder);
+          
+          console.log('🔥 DevLog: Dropping at index:', placeholderIndex);
+          
+          // Update sort order
+          updateTaskSortOrder(draggedTaskId, placeholderIndex);
         }
         
-        // Clean up drag over states
-        document.querySelectorAll('.task-swipe-container.drag-over').forEach(el => {
-          el.classList.remove('drag-over');
-        });
+        // Clean up
+        if (draggedElement) {
+          draggedElement.classList.remove('dragging');
+          draggedElement.style.position = '';
+          draggedElement.style.zIndex = '';
+          draggedElement.style.pointerEvents = '';
+          draggedElement.style.width = '';
+          draggedElement.style.left = '';
+          draggedElement.style.top = '';
+        }
         
-        // Clean up placeholder
         if (dragPlaceholder) {
           dragPlaceholder.remove();
           dragPlaceholder = null;
         }
         
+        // Reset state
         draggedElement = null;
         draggedTaskId = null;
+        isDragMode = false;
+        dragStartPos = { x: 0, y: 0 };
+        dragCurrentPos = { x: 0, y: 0 };
+        dragOffset = { x: 0, y: 0 };
       }
       
       function updateTaskSortOrder(taskId, newIndex) {
@@ -1017,16 +1103,20 @@
             return;
           }
           
-          // For mouse events, check if this might be intended as a drag operation
-          // If it's a mouse event and the container is draggable, wait a bit to see if it's a drag
-          if (!e.touches && container.draggable) {
-            // Set a small delay to allow native drag to start first
+          // Don't start swipe if we're in drag mode or about to drag
+          if (isDragMode || draggedElement) {
+            return;
+          }
+          
+          // For draggable elements, give priority to drag over swipe
+          if (container.draggable) {
+            // Set a delay to see if drag starts first
             setTimeout(() => {
               // Only start swipe if no drag operation started
-              if (!container.classList.contains('dragging')) {
+              if (!isDragMode && !container.classList.contains('dragging')) {
                 startSwipeGesture(e);
               }
-            }, 150); // 150ms delay to allow drag to start
+            }, 100); // Shorter delay for better responsiveness
             return;
           }
           
@@ -1837,7 +1927,7 @@
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.28-debug-drag — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.29-custom-drag — active:${activeCount} done:${doneCount}`;
           }
         }
 
