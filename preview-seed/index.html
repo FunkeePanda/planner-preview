@@ -1255,6 +1255,9 @@
           
           if (window.__DRAG_DEBUG) console.log('🔥 DevLog: Dropping at index:', dropIndex);
           
+          // Re-enable renders before persisting order so UI updates immediately
+          isRenderSuppressedForDrag = false;
+          
           // Update sort order
           updateTaskSortOrder(draggedTaskId, dropIndex);
         }
