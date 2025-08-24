@@ -430,8 +430,8 @@
     <main>
       <section id="tab-today">
                   <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.59-drag-leap</h2>
-          <div class="muted" style="margin-bottom:14px">Nearest-card detection + smaller hysteresis; smooth multi-card jumps with FLIP.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.60-drag-sim-check</h2>
+          <div class="muted" style="margin-bottom:14px">Added simulateReorder() test harness to verify persisted order and logs.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -448,7 +448,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.59-drag-leap — active:0 done:0
+              build: STEP-1.60-drag-sim-check — active:0 done:0
             </footer>
         </div>
       </section>
@@ -568,7 +568,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.59-drag-leap
+      build: STEP-1.60-drag-sim-check
     </div>
 
     <script>
@@ -2352,7 +2352,7 @@
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.59-drag-leap — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.60-drag-sim-check — active:${activeCount} done:${doneCount}`;
           }
         }
 
@@ -3007,6 +3007,24 @@
         console.log('🔄 Drag and drop reordering enabled');
         console.log('🔍 Run testDragDrop() to debug drag and drop');
         console.log('🧪 Run testResurrection() to test deletion bug automatically!');
+
+        // Programmatic simulation: move active[indexFrom] to indexTo and log
+        window.simulateReorder = function(indexFrom, indexTo) {
+          const active = getActive();
+          if (indexFrom < 0 || indexFrom >= active.length) {
+            console.warn('simulateReorder: invalid from', indexFrom);
+            return;
+          }
+          const indexTarget = Math.max(0, Math.min(indexTo, active.length - 1));
+          const task = active[indexFrom];
+          console.log('🧪 simulateReorder: moving', task.title, 'from', indexFrom, 'to', indexTarget);
+          updateTaskSortOrder(task.id, indexTarget);
+          // Verify order
+          const after = getActive().map(t => t.title);
+          console.log('🧪 after order:', after);
+          // Persisted snapshot
+          console.log('🧪 persisted sortOrders:', window.tasks.map(t => [t.title, t.sortOrder, t.completed]));
+        };
       })();
     </script>
   </body>
