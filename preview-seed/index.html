@@ -430,8 +430,8 @@
     <main>
       <section id="tab-today">
                   <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.61-drag-drop-render</h2>
-          <div class="muted" style="margin-bottom:14px">Ensured render after drop so visual order matches persisted state immediately.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.62-drag-visual-sync</h2>
+          <div class="muted" style="margin-bottom:14px">Visual sync: hide drag clone + immediate render on drop; no snap-back.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -448,7 +448,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.61-drag-drop-render — active:0 done:0
+              build: STEP-1.62-drag-visual-sync — active:0 done:0
             </footer>
         </div>
       </section>
@@ -568,7 +568,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.61-drag-drop-render
+      build: STEP-1.62-drag-visual-sync
     </div>
 
     <script>
@@ -1257,6 +1257,8 @@
           
           // Re-enable renders before persisting order so UI updates immediately
           isRenderSuppressedForDrag = false;
+          // Hide the fixed-position dragged element clone so new order is visible immediately
+          try { if (draggedElement) draggedElement.style.visibility = 'hidden'; } catch {}
           
           // Update sort order
           updateTaskSortOrder(draggedTaskId, dropIndex);
@@ -2357,7 +2359,7 @@
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.61-drag-drop-render — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.62-drag-visual-sync — active:${activeCount} done:${doneCount}`;
           }
         }
 
