@@ -430,8 +430,8 @@
     <main>
       <section id="tab-today">
                   <div class="card">
-          <h2 style="margin:0 0 10px 0">Today — step 1.58-drag-hold</h2>
-          <div class="muted" style="margin-bottom:14px">Index hysteresis: holds placeholder position until enough travel; plus FLIP.</div>
+          <h2 style="margin:0 0 10px 0">Today — step 1.59-drag-leap</h2>
+          <div class="muted" style="margin-bottom:14px">Nearest-card detection + smaller hysteresis; smooth multi-card jumps with FLIP.</div>
 
           <div id="today-list" style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px">
             <!-- Tasks will be rendered here by JavaScript -->
@@ -448,7 +448,7 @@
 
             <!-- Debug footer -->
             <footer id="debug-footer" style="opacity:.6;font-size:12px;padding:8px 16px;margin-top:16px">
-              build: STEP-1.58-drag-hold — active:0 done:0
+              build: STEP-1.59-drag-leap — active:0 done:0
             </footer>
         </div>
       </section>
@@ -568,7 +568,7 @@
 
     <!-- build-stamp: to verify deploy -->
     <div style="position:fixed;left:8px;bottom:8px;font-size:11px;opacity:.55">
-      build: STEP-1.58-drag-hold
+      build: STEP-1.59-drag-leap
     </div>
 
     <script>
@@ -1128,23 +1128,49 @@
           const todayList = document.getElementById('today-list');
           if (!todayList) return;
 
-          // Build array of droppable siblings excluding the dragged element and placeholder
-          const droppables = Array.from(todayList.querySelectorAll('.task-swipe-container[draggable="true"]')).filter(el => el !== draggedElement);
+          // Build array of all task cards (exclude dragged element) for robust indexing
+          const droppables = Array.from(todayList.querySelectorAll('.task-swipe-container')).filter(el => el !== draggedElement);
 
           // Clamp target Y to list bounds with small padding
           const listRect = todayList.getBoundingClientRect();
           const y = Math.max(listRect.top + 2, Math.min(clientY, listRect.bottom - 2));
 
-          // Compute target index by comparing cursor to element centers
-          let newIndex = droppables.length; // default to end
-          for (let i = 0; i < droppables.length; i++) {
-            const r = droppables[i].getBoundingClientRect();
-            const center = r.top + r.height / 2;
-            if (y < center) { newIndex = i; break; }
+          // Prefer nearest card via elementFromPoint, fallback to center scan
+          let overCard = null;
+          const prevPE = draggedElement.style.pointerEvents;
+          draggedElement.style.pointerEvents = 'none';
+          const elUnder = document.elementFromPoint(clientX, clientY);
+          draggedElement.style.pointerEvents = prevPE;
+          if (elUnder) {
+            const candidate = elUnder.closest('.task-swipe-container');
+            if (candidate && todayList.contains(candidate) && candidate !== draggedElement) {
+              overCard = candidate;
+            }
           }
 
+          let newIndex;
+          if (overCard) {
+            const i = droppables.indexOf(overCard);
+            if (i === -1) {
+              newIndex = droppables.length;
+            } else {
+              const r = overCard.getBoundingClientRect();
+              const ratio = (y - r.top) / r.height;
+              newIndex = i + (ratio > 0.5 ? 1 : 0);
+            }
+          } else {
+            // Fallback: compute by centers
+            newIndex = droppables.length;
+            for (let i = 0; i < droppables.length; i++) {
+              const r = droppables[i].getBoundingClientRect();
+              const center = r.top + r.height / 2;
+              if (y < center) { newIndex = i; break; }
+            }
+          }
+          newIndex = Math.max(0, Math.min(newIndex, droppables.length));
+
           // Hysteresis buffer: require minimum Y travel before changing index
-          const MIN_TRAVEL_PX = 10; // adjust as needed
+          const MIN_TRAVEL_PX = 6; // smaller threshold to allow smooth multi-card jumps
           if (dragLastIndex !== null && newIndex !== dragLastIndex) {
             if (Math.abs(y - dragLastSwitchY) < MIN_TRAVEL_PX) {
               newIndex = dragLastIndex; // hold position until sufficient travel
@@ -2324,7 +2350,7 @@
         function updateDebugFooter(activeCount, doneCount) {
           const debugFooter = document.getElementById('debug-footer');
           if (debugFooter) {
-            debugFooter.textContent = `build: STEP-1.58-drag-hold — active:${activeCount} done:${doneCount}`;
+            debugFooter.textContent = `build: STEP-1.59-drag-leap — active:${activeCount} done:${doneCount}`;
           }
         }
 
