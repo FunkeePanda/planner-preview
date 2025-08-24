@@ -1248,7 +1248,7 @@
         if (isDragMode && dragPlaceholder) {
           // Calculate new position based on placeholder (consider only task cards)
           const todayList = document.getElementById('today-list');
-          const droppables = Array.from(todayList.querySelectorAll('.task-swipe-container'));
+          const droppables = Array.from(todayList.querySelectorAll('.task-swipe-container')).filter(el => el !== draggedElement);
           const nextSibling = dragPlaceholder.nextElementSibling;
           let dropIndex = nextSibling ? droppables.indexOf(nextSibling) : droppables.length;
           if (dropIndex < 0) dropIndex = droppables.length;
