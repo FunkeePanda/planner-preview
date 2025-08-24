@@ -1246,15 +1246,17 @@
         if (window.__DRAG_DEBUG) console.log('🔥 DevLog: Drag end for task:', draggedTaskId);
         
         if (isDragMode && dragPlaceholder) {
-          // Calculate new position based on placeholder
+          // Calculate new position based on placeholder (consider only task cards)
           const todayList = document.getElementById('today-list');
-          const allChildren = [...todayList.children];
-          const placeholderIndex = allChildren.indexOf(dragPlaceholder);
+          const droppables = Array.from(todayList.querySelectorAll('.task-swipe-container'));
+          const nextSibling = dragPlaceholder.nextElementSibling;
+          let dropIndex = nextSibling ? droppables.indexOf(nextSibling) : droppables.length;
+          if (dropIndex < 0) dropIndex = droppables.length;
           
-          if (window.__DRAG_DEBUG) console.log('🔥 DevLog: Dropping at index:', placeholderIndex);
+          if (window.__DRAG_DEBUG) console.log('🔥 DevLog: Dropping at index:', dropIndex);
           
           // Update sort order
-          updateTaskSortOrder(draggedTaskId, placeholderIndex);
+          updateTaskSortOrder(draggedTaskId, dropIndex);
         }
         
         // Clean up
